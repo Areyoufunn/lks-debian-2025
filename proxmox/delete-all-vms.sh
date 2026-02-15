@@ -4,8 +4,13 @@
 # Use with caution!
 #
 
-echo "WARNING: This will DELETE all VMs (400-407)"
-echo "VMs to be deleted:"
+# Define colors
+YELLOW='\033[1;33m'
+BLUE='\033[1;34m'
+NC='\033[0m' # No Color
+
+echo "WARNING: This will DELETE all VMs (400-408)"
+echo -e "${YELLOW}This will DELETE the following VMs:${NC}"
 echo "  400 - fw-srv"
 echo "  401 - int-srv"
 echo "  402 - mail-srv"
@@ -14,17 +19,21 @@ echo "  404 - web-02"
 echo "  405 - db-srv"
 echo "  406 - mon-srv"
 echo "  407 - ani-clt"
+echo "  408 - juri-srv"
 echo ""
-read -p "Are you sure? (type 'yes' to confirm): " confirm
+read -p "Are you sure? (yes/no): " confirm
 
 if [ "$confirm" != "yes" ]; then
     echo "Cancelled."
     exit 0
 fi
 
-echo "Stopping and deleting VMs..."
+echo ""
+echo -e "${BLUE}Deleting VMs...${NC}"
+echo ""
 
-for vmid in {400..407}; do
+# Delete VMs 400-408
+for vmid in {400..408}; do
     if qm status $vmid &>/dev/null; then
         echo "Stopping VM $vmid..."
         qm stop $vmid 2>/dev/null || true
