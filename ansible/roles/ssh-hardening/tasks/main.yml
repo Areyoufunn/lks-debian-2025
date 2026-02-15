@@ -1,0 +1,64 @@
+---
+# SSH Hardening Role - Main Tasks
+
+- name: "📋 Display SSH Hardening Plan"
+  debug:
+    msg: |
+      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      🔒 SSH HARDENING CONFIGURATION
+      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      
+      Server: {{ inventory_hostname }}
+      
+      Security Measures:
+      1. Disable root login
+      2. Disable password authentication
+      3. Enable key-only authentication
+      4. Configure strong ciphers
+      5. Add login banner
+      
+      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  when: explain_mode | default(false)
+  tags: [explain]
+
+- name: "📝 Create SSH Banner"
+  copy:
+    content: |
+      *******************************************************************
+      *                   AUTHORIZED ACCESS ONLY                        *
+      *                                                                 *
+      *  This system is for authorized use only. All activity may be   *
+      *  monitored and reported. Unauthorized access is prohibited.    *
+      *                                                                 *
+      *                      LKSN 2025 - IT Network Systems            *
+      *******************************************************************
+    dest: /etc/ssh/banner
+    mode: '0644'
+  tags: [banner]
+
+- name: "⚙️ Configure SSH Daemon"
+  template:
+    src: sshd_config.j2
+    dest: /etc/ssh/sshd_config
+    mode: '0644'
+    backup: yes
+    validate: '/usr/sbin/sshd -t -f %s'
+  notify: restart sshd
+  tags: [config]
+
+- name: "👥 Create SSH Users Group"
+  group:
+    name: ssh-users
+    state: present
+  tags: [users]
+
+- name: "👤 Add Users to SSH Group"
+  user:
+    name: "{{ item }}"
+    groups: ssh-users
+    append: yes
+  loop:
+    - ani
+    - admin
+  ignore_errors: yes
+  tags: [users]

@@ -1,0 +1,17 @@
+---
+# Mail Role - Handlers
+
+- name: restart postfix
+  systemd:
+    name: postfix
+    state: restarted
+
+- name: restart dovecot
+  systemd:
+    name: dovecot
+    state: restarted
+
+- name: restart apache2
+  systemd:
+    name: apache2
+    state: restarted

@@ -1,0 +1,83 @@
+---
+# Firewall Role - Main Tasks
+# Configures nftables firewall, NAT, and routing
+
+- name: "📋 Display Firewall Configuration Plan"
+  debug:
+    msg: |
+      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      🔥 FIREWALL & GATEWAY CONFIGURATION
+      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      
+      Server: {{ inventory_hostname }}
+      WAN IP: {{ wan_ip }}
+      INT IP: {{ int_ip }}
+      DMZ IP: {{ dmz_ip }}
+      MGMT IP: {{ mgmt_ip }}
+      
+      Tasks:
+      1. Configure network interfaces (4 zones)
+      2. Enable IP forwarding
+      3. Install and configure nftables
+      4. Setup NAT/Masquerading
+      5. Configure firewall rules
+      
+      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  when: explain_mode | default(false)
+  tags: [explain]
+
+- name: "🌐 Configure Network Interfaces"
+  template:
+    src: interfaces.j2
+    dest: /etc/network/interfaces
+    owner: root
+    group: root
+    mode: '0644'
+    backup: yes
+  notify: restart networking
+  tags: [network]
+
+- name: "⚡ Enable IP Forwarding (Kernel Parameter)"
+  sysctl:
+    name: net.ipv4.ip_forward
+    value: '1'
+    state: present
+    sysctl_set: yes
+    reload: yes
+  tags: [ipforward]
+
+- name: "📦 Install nftables"
+  apt:
+    name: nftables
+    state: present
+    update_cache: yes
+  tags: [packages]
+
+- name: "🛡️ Configure nftables Firewall Rules"
+  template:
+    src: nftables.conf.j2
+    dest: /etc/nftables.conf
+    owner: root
+    group: root
+    mode: '0755'
+    backup: yes
+  notify: reload nftables
+  tags: [firewall]
+
+- name: "🚀 Enable and Start nftables Service"
+  systemd:
+    name: nftables
+    enabled: yes
+    state: started
+  tags: [service]
+
+- name: "✅ Verify IP Forwarding"
+  command: sysctl net.ipv4.ip_forward
+  register: ipforward_check
+  changed_when: false
+  tags: [verify]
+
+- name: "📊 Display IP Forwarding Status"
+  debug:
+    msg: "IP Forwarding: {{ ipforward_check.stdout }}"
+  tags: [verify]

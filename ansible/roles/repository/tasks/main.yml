@@ -1,0 +1,40 @@
+---
+# Repository Role - Main Tasks
+
+- name: "📦 Install Apache2"
+  apt:
+    name: apache2
+    state: present
+    update_cache: yes
+  tags: [packages]
+
+- name: "📁 Create Repository Directory"
+  file:
+    path: /var/www/html/repo/debian
+    state: directory
+    owner: www-data
+    group: www-data
+    mode: '0755'
+  tags: [setup]
+
+- name: "⚙️ Configure Repository VirtualHost"
+  template:
+    src: repo.conf.j2
+    dest: /etc/apache2/sites-available/repo.conf
+    mode: '0644'
+  notify: restart apache2
+  tags: [config]
+
+- name: "🔗 Enable Repository Site"
+  command: a2ensite repo
+  args:
+    creates: /etc/apache2/sites-enabled/repo.conf
+  notify: restart apache2
+  tags: [config]
+
+- name: "🚀 Ensure Apache2 Running"
+  systemd:
+    name: apache2
+    enabled: yes
+    state: started
+  tags: [service]

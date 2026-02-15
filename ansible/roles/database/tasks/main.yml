@@ -1,0 +1,208 @@
+---
+# Database Role - Main Tasks
+# MariaDB + phpMyAdmin
+
+- name: "📋 Display Database Configuration Plan"
+  debug:
+    msg: |
+      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      💾 DATABASE SERVER CONFIGURATION
+      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      
+      Server: {{ inventory_hostname }}
+      IP: {{ int_ip }}
+      Zone: Internal (INT)
+      
+      Tasks:
+      1. Install MariaDB Server
+      2. Secure installation
+      3. Create database 'itnsa'
+      4. Create users and grant privileges
+      5. Configure remote access from DMZ
+      6. Install phpMyAdmin with SSL
+      
+      Access:
+      - INT Network: 192.168.1.0/24
+      - DMZ Network: 172.16.1.0/24 (via firewall)
+      
+      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  when: explain_mode | default(false)
+  tags: [explain]
+
+- name: "📦 Install MariaDB"
+  apt:
+    name:
+      - mariadb-server
+      - mariadb-client
+      - python3-pymysql
+    state: present
+    update_cache: yes
+  tags: [packages]
+
+- name: "🚀 Start MariaDB Service"
+  systemd:
+    name: mariadb
+    enabled: yes
+    state: started
+  tags: [service]
+
+- name: "🔐 Set Root Password"
+  mysql_user:
+    name: root
+    password: Skills39!
+    login_unix_socket: /var/run/mysqld/mysqld.sock
+    state: present
+  tags: [mysql]
+
+- name: "🗑️ Remove Anonymous Users"
+  mysql_user:
+    name: ''
+    host_all: yes
+    state: absent
+    login_user: root
+    login_password: Skills39!
+  tags: [mysql]
+
+- name: "🗑️ Remove Test Database"
+  mysql_db:
+    name: test
+    state: absent
+    login_user: root
+    login_password: Skills39!
+  tags: [mysql]
+
+- name: "💾 Create Database 'itnsa'"
+  mysql_db:
+    name: itnsa
+    state: present
+    login_user: root
+    login_password: Skills39!
+  tags: [mysql]
+
+- name: "💾 Create Database 'roundcube'"
+  mysql_db:
+    name: roundcube
+    state: present
+    login_user: root
+    login_password: Skills39!
+  tags: [mysql]
+
+- name: "💾 Create Database 'cacti'"
+  mysql_db:
+    name: cacti
+    state: present
+    login_user: root
+    login_password: Skills39!
+  tags: [mysql]
+
+- name: "👤 Create Database User 'itnsa'"
+  mysql_user:
+    name: itnsa
+    password: Skills39!
+    priv: 'itnsa.*:ALL'
+    host: '%'
+    state: present
+    login_user: root
+    login_password: Skills39!
+  tags: [mysql]
+
+- name: "👤 Create Database User 'roundcube'"
+  mysql_user:
+    name: roundcube
+    password: Skills39!
+    priv: 'roundcube.*:ALL'
+    host: '172.16.1.%'
+    state: present
+    login_user: root
+    login_password: Skills39!
+  tags: [mysql]
+
+- name: "👤 Create Database User 'cacti'"
+  mysql_user:
+    name: cacti
+    password: Skills39!
+    priv: 'cacti.*:ALL'
+    host: '172.16.1.%'
+    state: present
+    login_user: root
+    login_password: Skills39!
+  tags: [mysql]
+
+- name: "👤 Allow Root Remote Access from DMZ"
+  mysql_user:
+    name: root
+    password: Skills39!
+    priv: '*.*:ALL,GRANT'
+    host: '172.16.1.%'
+    state: present
+    login_user: root
+    login_password: Skills39!
+  tags: [mysql]
+
+- name: "👤 Allow Root Remote Access from INT"
+  mysql_user:
+    name: root
+    password: Skills39!
+    priv: '*.*:ALL,GRANT'
+    host: '192.168.1.%'
+    state: present
+    login_user: root
+    login_password: Skills39!
+  tags: [mysql]
+
+- name: "⚙️ Configure MariaDB for Remote Access"
+  lineinfile:
+    path: /etc/mysql/mariadb.conf.d/50-server.cnf
+    regexp: '^bind-address'
+    line: 'bind-address = 0.0.0.0'
+    backup: yes
+  notify: restart mariadb
+  tags: [config]
+
+- name: "📦 Install phpMyAdmin"
+  apt:
+    name:
+      - phpmyadmin
+      - apache2
+      - php
+      - php-mysql
+      - libapache2-mod-php
+    state: present
+  environment:
+    DEBIAN_FRONTEND: noninteractive
+  tags: [phpmyadmin]
+
+- name: "🔗 Enable Apache Modules"
+  apache2_module:
+    name: "{{ item }}"
+    state: present
+  loop:
+    - ssl
+    - rewrite
+  notify: restart apache2
+  tags: [apache]
+
+- name: "⚙️ Configure phpMyAdmin VirtualHost"
+  template:
+    src: phpmyadmin-ssl.conf.j2
+    dest: /etc/apache2/sites-available/phpmyadmin-ssl.conf
+    mode: '0644'
+  notify: restart apache2
+  tags: [apache]
+
+- name: "🔗 Enable phpMyAdmin Site"
+  command: a2ensite phpmyadmin-ssl
+  args:
+    creates: /etc/apache2/sites-enabled/phpmyadmin-ssl.conf
+  notify: restart apache2
+  tags: [apache]
+
+- name: "🚀 Ensure Services Running"
+  systemd:
+    name: "{{ item }}"
+    enabled: yes
+    state: started
+  loop:
+    - mariadb
+    - apache2
+  tags: [service]

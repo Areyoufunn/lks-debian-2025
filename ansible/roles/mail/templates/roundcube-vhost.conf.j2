@@ -1,0 +1,19 @@
+<VirtualHost *:443>
+    ServerName webmail.{{ domain }}
+    DocumentRoot /usr/share/roundcube
+    
+    SSLEngine on
+    SSLCertificateFile /etc/ssl/lksn-ca/certs/mail-srv.crt
+    SSLCertificateKeyFile /etc/ssl/lksn-ca/private/mail-srv.key
+    SSLCACertificateFile /etc/ssl/lksn-ca/certs/ca.crt
+    
+    <Directory /usr/share/roundcube>
+        Options +FollowSymLinks
+        DirectoryIndex index.php
+        AllowOverride All
+        Require all granted
+    </Directory>
+    
+    ErrorLog ${APACHE_LOG_DIR}/roundcube_error.log
+    CustomLog ${APACHE_LOG_DIR}/roundcube_access.log combined
+</VirtualHost>

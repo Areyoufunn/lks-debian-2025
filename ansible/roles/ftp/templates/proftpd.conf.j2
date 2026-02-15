@@ -1,0 +1,30 @@
+ServerName "LKSN2025 FTP Server"
+ServerType standalone
+DefaultServer on
+Port 21
+
+# Chroot users to home directory
+DefaultRoot ~
+
+# TLS Configuration
+<IfModule mod_tls.c>
+    TLSEngine on
+    TLSLog /var/log/proftpd/tls.log
+    TLSProtocol TLSv1.2
+    
+    TLSRSACertificateFile /etc/ssl/lksn-ca/certs/ftp.crt
+    TLSRSACertificateKeyFile /etc/ssl/lksn-ca/private/ftp.key
+    TLSCACertificateFile /etc/ssl/lksn-ca/certs/ca.crt
+    
+    TLSOptions NoCertRequest
+    TLSVerifyClient off
+    TLSRequired on
+</IfModule>
+
+# User restrictions
+<Directory /home/file>
+    <Limit ALL>
+        AllowUser file
+        DenyAll
+    </Limit>
+</Directory>

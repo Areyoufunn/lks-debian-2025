@@ -1,0 +1,7 @@
+---
+# FTP Role - Handlers
+
+- name: restart proftpd
+  systemd:
+    name: proftpd
+    state: restarted

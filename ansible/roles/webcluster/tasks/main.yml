@@ -1,0 +1,107 @@
+---
+# Web Cluster Role - Main Tasks
+# Keepalived + HAProxy + Nginx
+
+- name: "📋 Display Web Cluster Configuration Plan"
+  debug:
+    msg: |
+      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      🌍 WEB CLUSTER CONFIGURATION
+      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      
+      Server: {{ inventory_hostname }}
+      Role: {{ keepalived_state }}
+      Priority: {{ keepalived_priority }}
+      VIP: {{ vip }}
+      
+      Tasks:
+      1. Install Keepalived (HA/Failover)
+      2. Install HAProxy (Load Balancer)
+      3. Install Nginx (Web Server)
+      4. Configure VIP failover
+      5. Configure load balancing
+      
+      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  when: explain_mode | default(false)
+  tags: [explain]
+
+- name: "📦 Install Packages"
+  apt:
+    name:
+      - keepalived
+      - haproxy
+      - nginx
+    state: present
+    update_cache: yes
+  tags: [packages]
+
+- name: "⚙️ Configure Keepalived"
+  template:
+    src: keepalived.conf.j2
+    dest: /etc/keepalived/keepalived.conf
+    mode: '0644'
+    backup: yes
+  notify: restart keepalived
+  tags: [keepalived]
+
+- name: "⚙️ Configure HAProxy"
+  template:
+    src: haproxy.cfg.j2
+    dest: /etc/haproxy/haproxy.cfg
+    mode: '0644'
+    backup: yes
+  notify: restart haproxy
+  tags: [haproxy]
+
+- name: "⚙️ Configure Nginx"
+  template:
+    src: nginx-default.j2
+    dest: /etc/nginx/sites-available/default
+    mode: '0644'
+    backup: yes
+  notify: restart nginx
+  tags: [nginx]
+
+- name: "📁 Create Web Root"
+  file:
+    path: /var/www/html
+    state: directory
+    owner: www-data
+    group: www-data
+    mode: '0755'
+  tags: [nginx]
+
+- name: "📄 Create Index Page"
+  copy:
+    content: "<h1>Hello from {{ inventory_hostname }}</h1>"
+    dest: /var/www/html/index.html
+    owner: www-data
+    group: www-data
+    mode: '0644'
+  tags: [nginx]
+
+- name: "🔒 Create Protected Directory"
+  file:
+    path: /var/www/html/data/file
+    state: directory
+    owner: www-data
+    group: www-data
+    mode: '0755'
+  tags: [nginx]
+
+- name: "🔑 Create htpasswd"
+  command: htpasswd -bc /etc/nginx/.htpasswd rahasia Skills39
+  args:
+    creates: /etc/nginx/.htpasswd
+  tags: [nginx]
+
+- name: "🚀 Enable and Start Services"
+  systemd:
+    name: "{{ item }}"
+    enabled: yes
+    state: started
+  loop:
+    - keepalived
+    - haproxy
+    - nginx
+  tags: [service]

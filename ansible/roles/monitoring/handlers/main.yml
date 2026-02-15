@@ -1,0 +1,7 @@
+---
+# Monitoring Role - Handlers
+
+- name: restart snmpd
+  systemd:
+    name: snmpd
+    state: restarted

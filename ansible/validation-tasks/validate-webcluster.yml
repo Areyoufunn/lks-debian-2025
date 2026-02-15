@@ -1,0 +1,159 @@
+---
+# Web Cluster Validation Tasks
+
+- name: "🔍 CHECK: Keepalived Installed"
+  command: dpkg -l keepalived
+  register: keepalived_installed
+  failed_when: false
+  changed_when: false
+
+- name: "❌ ERROR: Keepalived Not Installed"
+  debug:
+    msg: |
+      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      ❌ ERROR: Keepalived tidak terinstall
+      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      
+      MASALAH:
+      Package keepalived tidak ditemukan.
+      
+      PENJELASAN:
+      Keepalived manage VIP (Virtual IP) untuk high availability.
+      Tanpa Keepalived, tidak ada automatic failover jika
+      MASTER server down.
+      
+      CARA MEMPERBAIKI:
+      apt install keepalived -y
+      
+      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  when: keepalived_installed.rc != 0
+
+- name: "🔍 CHECK: HAProxy Installed"
+  command: dpkg -l haproxy
+  register: haproxy_installed
+  failed_when: false
+  changed_when: false
+
+- name: "❌ ERROR: HAProxy Not Installed"
+  debug:
+    msg: |
+      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      ❌ ERROR: HAProxy tidak terinstall
+      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      
+      MASALAH:
+      Package haproxy tidak ditemukan.
+      
+      PENJELASAN:
+      HAProxy adalah load balancer yang distribute traffic
+      ke backend web servers (web-01, web-02). Tanpa HAProxy,
+      tidak ada load balancing.
+      
+      CARA MEMPERBAIKI:
+      apt install haproxy -y
+      
+      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  when: haproxy_installed.rc != 0
+
+- name: "🔍 CHECK: Nginx Installed"
+  command: dpkg -l nginx
+  register: nginx_installed
+  failed_when: false
+  changed_when: false
+
+- name: "❌ ERROR: Nginx Not Installed"
+  debug:
+    msg: |
+      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      ❌ ERROR: Nginx tidak terinstall
+      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      
+      MASALAH:
+      Package nginx tidak ditemukan.
+      
+      PENJELASAN:
+      Nginx adalah web server yang serve actual content.
+      Tanpa Nginx, web pages tidak bisa displayed.
+      
+      CARA MEMPERBAIKI:
+      apt install nginx -y
+      
+      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  when: nginx_installed.rc != 0
+
+- name: "🔍 CHECK: VIP Configured"
+  shell: ip addr show | grep -q "172.16.1.100"
+  register: vip_configured
+  failed_when: false
+  changed_when: false
+
+- name: "❌ ERROR: VIP Not Configured"
+  debug:
+    msg: |
+      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      ❌ ERROR: VIP 172.16.1.100 tidak configured
+      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      
+      MASALAH:
+      Virtual IP (VIP) tidak ditemukan di network interfaces.
+      
+      PENJELASAN:
+      VIP adalah shared IP address antara web-01 dan web-02.
+      Keepalived akan assign VIP ke MASTER server. Jika
+      MASTER down, VIP akan failover ke BACKUP.
+      
+      Server: {{ inventory_hostname }}
+      Expected: MASTER harus punya VIP, BACKUP tidak
+      
+      CARA MEMPERBAIKI:
+      1. Check keepalived configuration:
+         cat /etc/keepalived/keepalived.conf
+      
+      2. Verify VIP setting:
+         virtual_ipaddress {
+             172.16.1.100
+         }
+      
+      3. Check keepalived status:
+         systemctl status keepalived
+      
+      4. Check logs:
+         journalctl -u keepalived -n 50
+      
+      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  when: vip_configured.rc != 0 and inventory_hostname == 'web-01'
+
+- name: "🔍 CHECK: HAProxy Backend Configuration"
+  shell: grep -q "server web-01" /etc/haproxy/haproxy.cfg && grep -q "server web-02" /etc/haproxy/haproxy.cfg
+  register: haproxy_backends
+  failed_when: false
+  changed_when: false
+
+- name: "❌ ERROR: HAProxy Backend Servers Not Configured"
+  debug:
+    msg: |
+      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      ❌ ERROR: HAProxy backend servers tidak configured
+      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      
+      MASALAH:
+      Backend servers (web-01, web-02) tidak ditemukan di
+      HAProxy configuration.
+      
+      PENJELASAN:
+      HAProxy harus tahu backend servers mana yang akan
+      receive traffic. Tanpa backend configuration, HAProxy
+      tidak bisa forward requests.
+      
+      CARA MEMPERBAIKI:
+      Edit /etc/haproxy/haproxy.cfg:
+      
+      backend web_backend
+          balance roundrobin
+          server web-01 172.16.1.21:80 check
+          server web-02 172.16.1.22:80 check
+      
+      systemctl restart haproxy
+      
+      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  when: haproxy_backends.rc != 0

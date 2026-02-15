@@ -1,0 +1,33 @@
+---
+# DHCP Role - Main Tasks
+
+- name: "📦 Install ISC DHCP Server"
+  apt:
+    name: isc-dhcp-server
+    state: present
+    update_cache: yes
+  tags: [packages]
+
+- name: "⚙️ Configure DHCP Server"
+  template:
+    src: dhcpd.conf.j2
+    dest: /etc/dhcp/dhcpd.conf
+    mode: '0644'
+    backup: yes
+  notify: restart isc-dhcp-server
+  tags: [config]
+
+- name: "⚙️ Configure DHCP Interface"
+  lineinfile:
+    path: /etc/default/isc-dhcp-server
+    regexp: '^INTERFACESv4='
+    line: 'INTERFACESv4="ens18"'
+  notify: restart isc-dhcp-server
+  tags: [config]
+
+- name: "🚀 Enable and Start DHCP Service"
+  systemd:
+    name: isc-dhcp-server
+    enabled: yes
+    state: started
+  tags: [service]

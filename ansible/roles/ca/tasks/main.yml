@@ -1,0 +1,115 @@
+---
+# CA Role - Main Tasks
+# Certificate Authority setup and certificate generation
+
+- name: "📋 Display CA Configuration Plan"
+  debug:
+    msg: |
+      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      🔐 CERTIFICATE AUTHORITY CONFIGURATION
+      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      
+      Server: {{ inventory_hostname }}
+      CA Directory: /etc/ssl/lksn-ca
+      
+      Tasks:
+      1. Create CA directory structure
+      2. Generate Root CA (10 years)
+      3. Generate server certificates:
+         - mail-srv.crt
+         - web.crt (with SAN)
+         - vpn.crt
+         - phpmyadmin.crt (90 days)
+      
+      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  when: explain_mode | default(false)
+  tags: [explain]
+
+- name: "📦 Install OpenSSL"
+  apt:
+    name: openssl
+    state: present
+    update_cache: yes
+  tags: [packages]
+
+- name: "📁 Create CA Directory Structure"
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+  loop:
+    - /etc/ssl/lksn-ca
+    - /etc/ssl/lksn-ca/private
+    - /etc/ssl/lksn-ca/certs
+    - /etc/ssl/lksn-ca/newcerts
+    - /etc/ssl/lksn-ca/crl
+  tags: [setup]
+
+- name: "📝 Create CA Database Files"
+  file:
+    path: "{{ item }}"
+    state: touch
+    mode: '0644'
+  loop:
+    - /etc/ssl/lksn-ca/index.txt
+  tags: [setup]
+
+- name: "🔢 Initialize Serial Numbers"
+  copy:
+    content: "1000"
+    dest: "{{ item }}"
+    mode: '0644'
+  loop:
+    - /etc/ssl/lksn-ca/serial
+    - /etc/ssl/lksn-ca/crlnumber
+  tags: [setup]
+
+- name: "⚙️ Copy OpenSSL Configuration"
+  template:
+    src: openssl.cnf.j2
+    dest: /etc/ssl/lksn-ca/openssl.cnf
+    mode: '0644'
+  tags: [config]
+
+- name: "🔑 Generate Root CA Private Key"
+  command: openssl genrsa -out /etc/ssl/lksn-ca/private/ca.key 4096
+  args:
+    creates: /etc/ssl/lksn-ca/private/ca.key
+  tags: [ca]
+
+- name: "🔒 Set CA Key Permissions"
+  file:
+    path: /etc/ssl/lksn-ca/private/ca.key
+    mode: '0400'
+  tags: [ca]
+
+- name: "📜 Generate Root CA Certificate"
+  command: >
+    openssl req -config /etc/ssl/lksn-ca/openssl.cnf
+    -key /etc/ssl/lksn-ca/private/ca.key
+    -new -x509 -days 3650 -sha256
+    -extensions v3_ca
+    -out /etc/ssl/lksn-ca/certs/ca.crt
+    -subj "/C=ID/ST=Jakarta/L=Jakarta/O=LKSN2025/OU=IT/CN=LKSN2025 Root CA"
+  args:
+    creates: /etc/ssl/lksn-ca/certs/ca.crt
+  tags: [ca]
+
+- name: "📜 Generate Server Certificates"
+  include_tasks: generate_cert.yml
+  loop:
+    - { name: 'mail-srv', cn: 'mail-srv.lksn2025.id', days: 365, ext: 'server_cert' }
+    - { name: 'web', cn: 'www.lksn2025.id', days: 365, ext: 'web_cert' }
+    - { name: 'vpn', cn: 'vpn.lksn2025.id', days: 365, ext: 'server_cert' }
+    - { name: 'phpmyadmin', cn: 'phpmyadmin.lksn2025.id', days: 90, ext: 'server_cert' }
+  loop_control:
+    loop_var: cert
+  tags: [certs]
+
+- name: "✅ Verify CA Certificate"
+  command: openssl x509 -noout -text -in /etc/ssl/lksn-ca/certs/ca.crt
+  register: ca_verify
+  changed_when: false
+  tags: [verify]

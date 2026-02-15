@@ -1,0 +1,25 @@
+---
+# Generate individual certificate
+
+- name: "🔑 Generate Private Key for {{ cert.name }}"
+  command: openssl genrsa -out /etc/ssl/lksn-ca/private/{{ cert.name }}.key 2048
+  args:
+    creates: /etc/ssl/lksn-ca/private/{{ cert.name }}.key
+
+- name: "📝 Generate CSR for {{ cert.name }}"
+  command: >
+    openssl req -new
+    -key /etc/ssl/lksn-ca/private/{{ cert.name }}.key
+    -out /etc/ssl/lksn-ca/certs/{{ cert.name }}.csr
+    -subj "/C=ID/ST=Jakarta/O=LKSN2025/CN={{ cert.cn }}"
+  args:
+    creates: /etc/ssl/lksn-ca/certs/{{ cert.name }}.csr
+
+- name: "✍️ Sign Certificate for {{ cert.name }}"
+  shell: >
+    echo "y" | openssl ca -config /etc/ssl/lksn-ca/openssl.cnf
+    -extensions {{ cert.ext | default('server_cert') }} -days {{ cert.days }} -notext -md sha256
+    -in /etc/ssl/lksn-ca/certs/{{ cert.name }}.csr
+    -out /etc/ssl/lksn-ca/certs/{{ cert.name }}.crt
+  args:
+    creates: /etc/ssl/lksn-ca/certs/{{ cert.name }}.crt

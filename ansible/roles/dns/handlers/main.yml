@@ -1,0 +1,12 @@
+---
+# DNS Role - Handlers
+
+- name: reload bind9
+  systemd:
+    name: bind9
+    state: reloaded
+
+- name: restart bind9
+  systemd:
+    name: bind9
+    state: restarted

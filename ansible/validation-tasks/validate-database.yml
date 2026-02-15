@@ -1,0 +1,105 @@
+---
+# Database Service Validation Tasks
+
+- name: "🔍 CHECK: MariaDB Installed"
+  command: dpkg -l mariadb-server
+  register: mariadb_installed
+  failed_when: false
+  changed_when: false
+
+- name: "❌ ERROR: MariaDB Not Installed"
+  debug:
+    msg: |
+      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      ❌ ERROR: MariaDB tidak terinstall
+      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      
+      MASALAH:
+      Package mariadb-server tidak ditemukan.
+      
+      PENJELASAN:
+      MariaDB adalah database server yang diperlukan untuk
+      store data aplikasi (Roundcube, Cacti, dll).
+      
+      CARA MEMPERBAIKI:
+      apt install mariadb-server mariadb-client -y
+      systemctl enable mariadb
+      systemctl start mariadb
+      
+      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  when: mariadb_installed.rc != 0
+
+- name: "🔍 CHECK: MariaDB Listening on 0.0.0.0"
+  shell: netstat -tuln | grep 3306 | grep -q "0.0.0.0:3306"
+  register: mariadb_remote
+  failed_when: false
+  changed_when: false
+
+- name: "❌ ERROR: MariaDB Not Configured for Remote Access"
+  debug:
+    msg: |
+      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      ❌ ERROR: MariaDB hanya listening di localhost
+      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      
+      MASALAH:
+      MariaDB bind-address masih 127.0.0.1 (localhost only).
+      
+      PENJELASAN:
+      Database di int-srv harus accessible dari DMZ network
+      (mail-srv, mon-srv) untuk Roundcube dan Cacti.
+      
+      Jika bind-address = 127.0.0.1:
+      - Hanya localhost yang bisa connect
+      - Remote connections dari DMZ akan ditolak
+      - Roundcube dan Cacti tidak bisa access database
+      
+      CARA MEMPERBAIKI:
+      1. Edit configuration:
+         nano /etc/mysql/mariadb.conf.d/50-server.cnf
+      
+      2. Find dan change:
+         bind-address = 127.0.0.1
+         ↓
+         bind-address = 0.0.0.0
+      
+      3. Restart MariaDB:
+         systemctl restart mariadb
+      
+      4. Verify:
+         netstat -tuln | grep 3306
+         # Should show: 0.0.0.0:3306
+      
+      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  when: mariadb_remote.rc != 0
+
+- name: "🔍 CHECK: Database 'roundcube' Exists"
+  shell: mysql -e "SHOW DATABASES LIKE 'roundcube';" | grep -q roundcube
+  register: db_roundcube
+  failed_when: false
+  changed_when: false
+
+- name: "❌ ERROR: Database 'roundcube' Missing"
+  debug:
+    msg: |
+      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      ❌ ERROR: Database 'roundcube' tidak ditemukan
+      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      
+      MASALAH:
+      Database untuk Roundcube webmail belum dibuat.
+      
+      PENJELASAN:
+      Roundcube memerlukan database 'roundcube' untuk store:
+      - User preferences
+      - Contact lists
+      - Email cache
+      - Session data
+      
+      CARA MEMPERBAIKI:
+      mysql -e "CREATE DATABASE roundcube CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+      mysql -e "GRANT ALL ON roundcube.* TO 'roundcube'@'172.16.1.%' IDENTIFIED BY 'Skills39!';"
+      mysql -e "FLUSH PRIVILEGES;"
+      
+      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  when: db_roundcube.rc != 0

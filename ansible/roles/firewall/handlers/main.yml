@@ -1,0 +1,12 @@
+---
+# Firewall Role - Handlers
+
+- name: restart networking
+  systemd:
+    name: networking
+    state: restarted
+
+- name: reload nftables
+  systemd:
+    name: nftables
+    state: reloaded

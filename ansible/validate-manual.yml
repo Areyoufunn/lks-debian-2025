@@ -1,0 +1,137 @@
+---
+# Manual Configuration Validator
+# Checks manually configured services and explains errors
+# Usage: ansible-playbook validate-manual.yml
+
+- name: "🔍 VALIDATE MANUAL CONFIGURATIONS"
+  hosts: all_servers
+  gather_facts: yes
+  vars:
+    validation_results: []
+    
+  tasks:
+    - name: "📋 Display Validation Info"
+      debug:
+        msg: |
+          ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+          🔍 MANUAL CONFIGURATION VALIDATOR
+          ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+          
+          Server: {{ inventory_hostname }}
+          IP: {{ ansible_default_ipv4.address | default('N/A') }}
+          
+          This will validate your manual configurations and
+          explain any errors found.
+          
+          ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      tags: [always]
+
+# ============================================================
+# FIREWALL VALIDATION
+# ============================================================
+- name: "🔥 VALIDATE FIREWALL (fw-srv)"
+  hosts: firewall
+  gather_facts: yes
+  tasks:
+    - name: "Include firewall validation"
+      include_tasks: validation-tasks/validate-firewall.yml
+  tags: [firewall]
+
+# ============================================================
+# DNS VALIDATION
+# ============================================================
+- name: "🌐 VALIDATE DNS (int-srv)"
+  hosts: internal
+  gather_facts: yes
+  tasks:
+    - name: "Include DNS validation"
+      include_tasks: validation-tasks/validate-dns.yml
+  tags: [dns]
+
+# ============================================================
+# LDAP VALIDATION
+# ============================================================
+- name: "📁 VALIDATE LDAP (int-srv)"
+  hosts: internal
+  gather_facts: yes
+  tasks:
+    - name: "Include LDAP validation"
+      include_tasks: validation-tasks/validate-ldap.yml
+  tags: [ldap]
+
+# ============================================================
+# LDAP VALIDATION
+# ============================================================
+- name: "📁 VALIDATE LDAP (int-srv)"
+  hosts: internal
+  gather_facts: yes
+  tasks:
+    - name: "Include LDAP validation"
+      include_tasks: validation-tasks/validate-ldap.yml
+  tags: [ldap]
+
+# ============================================================
+# CA VALIDATION
+# ============================================================
+- name: "🔐 VALIDATE CA (int-srv)"
+  hosts: internal
+  gather_facts: yes
+  tasks:
+    - name: "Include CA validation"
+      include_tasks: validation-tasks/validate-ca.yml
+  tags: [ca]
+
+# ============================================================
+# DATABASE VALIDATION
+# ============================================================
+- name: "💾 VALIDATE DATABASE (int-srv)"
+  hosts: internal
+  gather_facts: yes
+  tasks:
+    - name: "Include database validation"
+      include_tasks: validation-tasks/validate-database.yml
+  tags: [database]
+
+# ============================================================
+# MAIL VALIDATION
+# ============================================================
+- name: "📧 VALIDATE MAIL (mail-srv)"
+  hosts: mail
+  gather_facts: yes
+  tasks:
+    - name: "Include mail validation"
+      include_tasks: validation-tasks/validate-mail.yml
+  tags: [mail]
+
+# ============================================================
+# WEB CLUSTER VALIDATION
+# ============================================================
+- name: "🌍 VALIDATE WEB CLUSTER (web-01, web-02)"
+  hosts: webcluster
+  gather_facts: yes
+  tasks:
+    - name: "Include web cluster validation"
+      include_tasks: validation-tasks/validate-webcluster.yml
+  tags: [web]
+
+# ============================================================
+# SUMMARY
+# ============================================================
+- name: "📊 VALIDATION SUMMARY"
+  hosts: localhost
+  gather_facts: no
+  tasks:
+    - name: "Display summary"
+      debug:
+        msg: |
+          ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+          📊 VALIDATION COMPLETE
+          ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+          
+          Check the output above for any errors or warnings.
+          
+          ✓ = Configuration correct
+          ✗ = Configuration error (see explanation)
+          ⚠ = Warning (not critical)
+          
+          ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

@@ -1,0 +1,272 @@
+{
+  "topology_name": "LKS 2025 Debian Server Infrastructure",
+  "domain": "lksn2025.id",
+  "networks": {
+    "internet": {
+      "network": "192.168.27.0/24",
+      "gateway": "192.168.27.1",
+      "description": "WAN connection from Proxmox host"
+    },
+    "int_zone": {
+      "network": "192.168.1.0/24",
+      "gateway": "192.168.1.254",
+      "description": "Internal services zone"
+    },
+    "dmz_zone": {
+      "network": "172.16.1.0/24",
+      "gateway": "172.16.1.254",
+      "description": "DMZ for public-facing services"
+    },
+    "vpn": {
+      "network": "10.10.0.0/24",
+      "gateway": "10.10.0.1",
+      "description": "OpenVPN client network"
+    },
+    "mgmt": {
+      "network": "10.0.0.0/24",
+      "gateway": "10.0.0.1",
+      "description": "Management network for SSH/monitoring"
+    }
+  },
+  "hosts": {
+    "fw-srv": {
+      "fqdn": "fw.lksn2025.id",
+      "hostname": "fw-srv",
+      "interfaces": {
+        "ens18": {
+          "zone": "internet",
+          "ip": "192.168.27.200",
+          "netmask": "255.255.255.0",
+          "gateway": "192.168.27.1",
+          "description": "WAN interface"
+        },
+        "ens19": {
+          "zone": "int_zone",
+          "ip": "192.168.1.254",
+          "netmask": "255.255.255.0",
+          "description": "Internal zone interface"
+        },
+        "ens20": {
+          "zone": "dmz_zone",
+          "ip": "172.16.1.254",
+          "netmask": "255.255.255.0",
+          "description": "DMZ zone interface"
+        },
+        "ens21": {
+          "zone": "mgmt",
+          "ip": "10.0.0.11",
+          "netmask": "255.255.255.0",
+          "description": "Management interface"
+        }
+      },
+      "services": [
+        "firewall-nftables",
+        "router",
+        "nat",
+        "openvpn-server"
+      ],
+      "role": "gateway"
+    },
+    "int-srv": {
+      "fqdn": "int-srv.lksn2025.id",
+      "hostname": "int-srv",
+      "interfaces": {
+        "ens18": {
+          "zone": "int_zone",
+          "ip": "192.168.1.10",
+          "netmask": "255.255.255.0",
+          "gateway": "192.168.1.254",
+          "description": "Internal zone interface"
+        },
+        "ens19": {
+          "zone": "mgmt",
+          "ip": "10.0.0.10",
+          "netmask": "255.255.255.0",
+          "description": "Management interface"
+        }
+      },
+      "services": [
+        "dns-bind9",
+        "ldap-slapd",
+        "ca-openssl",
+        "dhcp-server",
+        "ftp-proftpd",
+        "local-repository"
+      ],
+      "role": "internal-services"
+    },
+    "mail-srv": {
+      "fqdn": "mail-srv.lksn2025.id",
+      "hostname": "mail-srv",
+      "interfaces": {
+        "ens18": {
+          "zone": "dmz_zone",
+          "ip": "172.16.1.10",
+          "netmask": "255.255.255.0",
+          "gateway": "172.16.1.254",
+          "description": "DMZ zone interface"
+        },
+        "ens19": {
+          "zone": "mgmt",
+          "ip": "10.0.0.12",
+          "netmask": "255.255.255.0",
+          "description": "Management interface"
+        }
+      },
+      "services": [
+        "postfix-smtp",
+        "dovecot-imap",
+        "roundcube-webmail"
+      ],
+      "role": "mail-server"
+    },
+    "web-01": {
+      "fqdn": "web-01.lksn2025.id",
+      "hostname": "web-01",
+      "interfaces": {
+        "ens18": {
+          "zone": "dmz_zone",
+          "ip": "172.16.1.21",
+          "netmask": "255.255.255.0",
+          "gateway": "172.16.1.254",
+          "description": "DMZ zone interface"
+        },
+        "ens19": {
+          "zone": "mgmt",
+          "ip": "10.0.0.13",
+          "netmask": "255.255.255.0",
+          "description": "Management interface"
+        }
+      },
+      "services": [
+        "keepalived",
+        "haproxy",
+        "web-server"
+      ],
+      "role": "web-cluster-master",
+      "ha_config": {
+        "vip": "172.16.1.20",
+        "priority": 100,
+        "state": "MASTER"
+      }
+    },
+    "web-02": {
+      "fqdn": "web-02.lksn2025.id",
+      "hostname": "web-02",
+      "interfaces": {
+        "ens18": {
+          "zone": "dmz_zone",
+          "ip": "172.16.1.22",
+          "netmask": "255.255.255.0",
+          "gateway": "172.16.1.254",
+          "description": "DMZ zone interface"
+        },
+        "ens19": {
+          "zone": "mgmt",
+          "ip": "10.0.0.14",
+          "netmask": "255.255.255.0",
+          "description": "Management interface"
+        }
+      },
+      "services": [
+        "keepalived",
+        "haproxy",
+        "nginx"
+      ],
+      "role": "web-cluster-backup",
+      "ha_config": {
+        "vip": "172.16.1.20",
+        "priority": 90,
+        "state": "BACKUP"
+      }
+    },
+    "ani-clt": {
+      "fqdn": "ani-clt.lksn2025.id",
+      "hostname": "ani-clt",
+      "interfaces": {
+        "ens18": {
+          "zone": "internet",
+          "ip": "192.168.27.100",
+          "netmask": "255.255.255.255",
+          "gateway": "192.168.27.1",
+          "description": "Direct internet access"
+        },
+        "ens19": {
+          "zone": "mgmt",
+          "ip": "10.0.0.15",
+          "netmask": "255.255.255.0",
+          "description": "Management interface"
+        }
+      },
+      "services": [
+        "client"
+      ],
+      "role": "client"
+    }
+  },
+  "dns_records": {
+    "A_records": {
+      "fw.lksn2025.id": "192.168.27.200",
+      "int-srv.lksn2025.id": "192.168.1.10",
+      "mail-srv.lksn2025.id": "172.16.1.10",
+      "web-01.lksn2025.id": "172.16.1.21",
+      "web-02.lksn2025.id": "172.16.1.22",
+      "db.lksn2025.id": "172.16.1.17",
+      "netmon.lksn2025.id": "172.16.1.15",
+      "www.lksn2025.id": "192.168.27.200",
+      "mail.lksn2025.id": "172.16.1.10",
+      "vip.lksn2025.id": "172.16.1.100",
+      "phpmyadmin.lksn2025.id": "172.16.1.17",
+      "vpn.lksn2025.id": "192.168.27.200"
+    },
+    "MX_records": {
+      "lksn2025.id": {
+        "priority": 10,
+        "mailserver": "mail-srv.lksn2025.id"
+      }
+    },
+    "CNAME_records": {
+      "webmail.lksn2025.id": "mail-srv.lksn2025.id",
+      "cacti.lksn2025.id": "netmon.lksn2025.id"
+    }
+  },
+  "firewall_zones": {
+    "wan": {
+      "interfaces": [
+        "ens18"
+      ],
+      "default_policy": "DROP",
+      "description": "Untrusted internet zone"
+    },
+    "int": {
+      "interfaces": [
+        "ens19"
+      ],
+      "default_policy": "ACCEPT",
+      "description": "Trusted internal zone"
+    },
+    "dmz": {
+      "interfaces": [
+        "ens20"
+      ],
+      "default_policy": "DROP",
+      "description": "Semi-trusted DMZ zone"
+    },
+    "mgmt": {
+      "interfaces": [
+        "ens21"
+      ],
+      "default_policy": "ACCEPT",
+      "description": "Management zone"
+    }
+  },
+  "deployment_order": [
+    "fw-srv",
+    "int-srv",
+    "mail-srv",
+    "db-srv",
+    "mon-srv",
+    "web-01",
+    "web-02"
+  ]
+}

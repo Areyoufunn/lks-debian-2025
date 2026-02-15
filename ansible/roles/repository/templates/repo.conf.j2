@@ -1,0 +1,12 @@
+<VirtualHost *:80>
+    ServerName repo.lksn2025.id
+    DocumentRoot /var/www/html/repo
+    
+    <Directory /var/www/html/repo>
+        Options +Indexes +FollowSymLinks
+        Require all granted
+    </Directory>
+    
+    ErrorLog ${APACHE_LOG_DIR}/repo_error.log
+    CustomLog ${APACHE_LOG_DIR}/repo_access.log combined
+</VirtualHost>

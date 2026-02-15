@@ -1,0 +1,45 @@
+# Ansible
+*.retry
+*.log
+.vault_pass
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+
+# OS
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# IDE
+.vscode/
+.idea/
+*.iml
+
+# Temporary
+tmp/
+temp/
+*.tmp
+
+# Sensitive
+*.key
+*.pem
+secrets.yml
+vault.yml
+
+# Backup
+*.bak
+*.backup
+*~
+
+# Logs
+logs/
+*.log

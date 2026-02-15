@@ -1,0 +1,66 @@
+---
+# Master Playbook - Deploy All Services
+# Usage: ansible-playbook site.yml
+# Usage with explain: ansible-playbook site.yml -e "explain_mode=true"
+
+- name: "🔥 PHASE 1: Deploy Firewall & Gateway"
+  hosts: firewall
+  roles:
+    - firewall
+  tags: [phase1, firewall]
+
+- name: "🌐 PHASE 2: Deploy DNS Server"
+  hosts: internal
+  roles:
+    - dns
+  tags: [phase2, dns]
+
+- name: "🔐 PHASE 3: Deploy Certificate Authority"
+  hosts: internal
+  roles:
+    - ca
+  tags: [phase3, ca]
+
+- name: "📁 PHASE 4: Deploy LDAP Directory"
+  hosts: internal
+  roles:
+    - ldap
+  tags: [phase4, ldap]
+
+- name: "💾 PHASE 4b: Deploy Database Server"
+  hosts: internal
+  roles:
+    - database
+  tags: [phase4, database]
+
+- name: "📧 PHASE 5: Deploy Mail Server"
+  hosts: mail
+  roles:
+    - mail
+  tags: [phase5, mail]
+
+- name: "🌍 PHASE 6: Deploy Web Cluster"
+  hosts: webcluster
+  roles:
+    - webcluster
+  tags: [phase6, web]
+
+- name: "📊 PHASE 7: Deploy Monitoring Server"
+  hosts: monitoring
+  roles:
+    - monitoring
+  tags: [phase7, monitoring]
+
+- name: "🔧 PHASE 8: Deploy Additional Services"
+  hosts: internal
+  roles:
+    - dhcp
+    - ftp
+    - repository
+  tags: [phase8, additional]
+
+- name: "🔒 PHASE 9: Apply System Security"
+  hosts: all_servers
+  roles:
+    - ssh-hardening
+  tags: [phase9, security]

@@ -1,0 +1,120 @@
+---
+# Mail Service Validation Tasks
+
+- name: "🔍 CHECK: Postfix Installed"
+  command: dpkg -l postfix
+  register: postfix_installed
+  failed_when: false
+  changed_when: false
+
+- name: "❌ ERROR: Postfix Not Installed"
+  debug:
+    msg: |
+      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      ❌ ERROR: Postfix tidak terinstall
+      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      
+      MASALAH:
+      Package postfix tidak ditemukan.
+      
+      PENJELASAN:
+      Postfix adalah SMTP server untuk send/receive email.
+      Tanpa Postfix, email tidak bisa dikirim atau diterima.
+      
+      CARA MEMPERBAIKI:
+      apt install postfix -y
+      # Pilih "Internet Site" saat installation
+      # Domain: lksn2025.id
+      
+      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  when: postfix_installed.rc != 0
+
+- name: "🔍 CHECK: Dovecot Installed"
+  command: dpkg -l dovecot-core
+  register: dovecot_installed
+  failed_when: false
+  changed_when: false
+
+- name: "❌ ERROR: Dovecot Not Installed"
+  debug:
+    msg: |
+      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      ❌ ERROR: Dovecot tidak terinstall
+      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      
+      MASALAH:
+      Package dovecot-core tidak ditemukan.
+      
+      PENJELASAN:
+      Dovecot adalah IMAP server untuk retrieve email.
+      Tanpa Dovecot, users tidak bisa read email via client.
+      
+      CARA MEMPERBAIKI:
+      apt install dovecot-core dovecot-imapd -y
+      
+      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  when: dovecot_installed.rc != 0
+
+- name: "🔍 CHECK: SMTP Port 25 Listening"
+  wait_for:
+    port: 25
+    timeout: 5
+  register: smtp_port
+  failed_when: false
+  changed_when: false
+
+- name: "❌ ERROR: SMTP Not Listening on Port 25"
+  debug:
+    msg: |
+      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      ❌ ERROR: SMTP tidak listening di port 25
+      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      
+      MASALAH:
+      Postfix tidak listening pada port 25 (SMTP).
+      
+      PENJELASAN:
+      Port 25 adalah standard SMTP port untuk receive email
+      dari external mail servers. Tanpa ini, incoming email
+      dari internet tidak bisa diterima.
+      
+      CARA MEMPERBAIKI:
+      1. Check postfix status:
+         systemctl status postfix
+      
+      2. Check logs:
+         tail -f /var/log/mail.log
+      
+      3. Restart postfix:
+         systemctl restart postfix
+      
+      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  when: smtp_port.failed
+
+- name: "🔍 CHECK: Roundcube Database Connection"
+  shell: grep -q "192.168.1.10" /etc/roundcube/config.inc.php
+  register: roundcube_db
+  failed_when: false
+  changed_when: false
+
+- name: "❌ ERROR: Roundcube Not Pointing to int-srv Database"
+  debug:
+    msg: |
+      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      ❌ ERROR: Roundcube database connection salah
+      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      
+      MASALAH:
+      Roundcube tidak connect ke database di int-srv.
+      
+      PENJELASAN:
+      Database sekarang centralized di int-srv (192.168.1.10).
+      Roundcube harus connect ke sana, bukan localhost.
+      
+      CARA MEMPERBAIKI:
+      Edit /etc/roundcube/config.inc.php:
+      
+      $config['db_dsnw'] = 'mysql://roundcube:Skills39!@192.168.1.10/roundcube';
+      
+      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  when: roundcube_db.rc != 0

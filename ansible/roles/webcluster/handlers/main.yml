@@ -1,0 +1,17 @@
+---
+# Web Cluster Role - Handlers
+
+- name: restart keepalived
+  systemd:
+    name: keepalived
+    state: restarted
+
+- name: restart haproxy
+  systemd:
+    name: haproxy
+    state: restarted
+
+- name: restart nginx
+  systemd:
+    name: nginx
+    state: restarted

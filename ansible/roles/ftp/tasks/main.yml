@@ -1,0 +1,41 @@
+---
+# FTP Role - Main Tasks
+
+- name: "📦 Install ProFTPD"
+  apt:
+    name: proftpd
+    state: present
+    update_cache: yes
+  environment:
+    DEBIAN_FRONTEND: noninteractive
+  tags: [packages]
+
+- name: "⚙️ Configure ProFTPD"
+  template:
+    src: proftpd.conf.j2
+    dest: /etc/proftpd/proftpd.conf
+    mode: '0644'
+    backup: yes
+  notify: restart proftpd
+  tags: [config]
+
+- name: "👤 Create FTP User"
+  user:
+    name: file
+    home: /home/file
+    shell: /bin/bash
+    state: present
+  tags: [users]
+
+- name: "🔑 Set FTP User Password"
+  user:
+    name: file
+    password: "{{ 'Skills39!' | password_hash('sha512') }}"
+  tags: [users]
+
+- name: "🚀 Enable and Start ProFTPD"
+  systemd:
+    name: proftpd
+    enabled: yes
+    state: started
+  tags: [service]

@@ -1,0 +1,80 @@
+---
+# CA (Certificate Authority) Validation Tasks
+
+- name: "🔍 CHECK: OpenSSL Installed"
+  command: dpkg -l openssl
+  register: openssl_installed
+  failed_when: false
+  changed_when: false
+
+- name: "🔍 CHECK: Root CA Certificate Exists"
+  stat:
+    path: /etc/ssl/lksn-ca/certs/ca.crt
+  register: root_ca
+
+- name: "❌ ERROR: Root CA Certificate Missing"
+  debug:
+    msg: |
+      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      ❌ ERROR: Root CA certificate tidak ditemukan
+      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      
+      MASALAH:
+      File /etc/ssl/lksn-ca/certs/ca.crt tidak ada.
+      
+      PENJELASAN:
+      Root CA certificate diperlukan untuk sign semua
+      server certificates (web, mail, vpn). Tanpa Root CA,
+      tidak bisa generate trusted certificates.
+      
+      CARA MEMPERBAIKI:
+      1. Create CA directory:
+         mkdir -p /etc/ssl/lksn-ca/{private,certs,newcerts,crl}
+         touch /etc/ssl/lksn-ca/index.txt
+         echo "1000" > /etc/ssl/lksn-ca/serial
+      
+      2. Generate CA private key:
+         openssl genrsa -out /etc/ssl/lksn-ca/private/ca.key 4096
+         chmod 400 /etc/ssl/lksn-ca/private/ca.key
+      
+      3. Generate CA certificate:
+         openssl req -new -x509 -days 3650 \
+           -key /etc/ssl/lksn-ca/private/ca.key \
+           -out /etc/ssl/lksn-ca/certs/ca.crt \
+           -subj "/C=ID/ST=Jakarta/O=LKSN2025/CN=LKSN2025 Root CA"
+      
+      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  when: not root_ca.stat.exists
+
+- name: "🔍 CHECK: Web Certificate Exists"
+  stat:
+    path: /etc/ssl/lksn-ca/certs/web.crt
+  register: web_cert
+
+- name: "⚠ WARNING: Web Certificate Missing"
+  debug:
+    msg: |
+      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      ⚠ WARNING: Web certificate belum di-generate
+      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      
+      Web server memerlukan SSL certificate untuk HTTPS.
+      
+      Generate dengan:
+      1. Create private key:
+         openssl genrsa -out /etc/ssl/lksn-ca/private/web.key 2048
+      
+      2. Create CSR:
+         openssl req -new \
+           -key /etc/ssl/lksn-ca/private/web.key \
+           -out /etc/ssl/lksn-ca/certs/web.csr \
+           -subj "/C=ID/ST=Jakarta/O=LKSN2025/CN=www.lksn2025.id"
+      
+      3. Sign with CA:
+         openssl ca -config /etc/ssl/lksn-ca/openssl.cnf \
+           -extensions web_cert -days 365 \
+           -in /etc/ssl/lksn-ca/certs/web.csr \
+           -out /etc/ssl/lksn-ca/certs/web.crt
+      
+      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  when: not web_cert.stat.exists

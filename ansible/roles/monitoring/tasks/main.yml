@@ -1,0 +1,81 @@
+---
+# Monitoring Role - Main Tasks (Simplified)
+
+- name: "📋 Display Monitoring Configuration Plan"
+  debug:
+    msg: |
+      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      📊 MONITORING SERVER CONFIGURATION
+      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      
+      Server: {{ inventory_hostname }}
+      
+      Tasks:
+      1. Install SNMP daemon
+      2. Configure SNMP community
+      3. Install Cacti (manual web setup required)
+      
+      Note: Cacti web setup must be completed manually
+      
+      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  when: explain_mode | default(false)
+  tags: [explain]
+
+- name: "📦 Install SNMP"
+  apt:
+    name:
+      - snmpd
+      - snmp
+    state: present
+    update_cache: yes
+  tags: [packages]
+
+- name: "⚙️ Configure SNMP"
+  template:
+    src: snmpd.conf.j2
+    dest: /etc/snmp/snmpd.conf
+    mode: '0644'
+    backup: yes
+  notify: restart snmpd
+  tags: [config]
+
+- name: "🚀 Enable and Start SNMP"
+  systemd:
+    name: snmpd
+    enabled: yes
+    state: started
+  tags: [service]
+
+- name: "📦 Install Cacti Prerequisites"
+  apt:
+    name:
+      - apache2
+      - php
+      - php-mysql
+      - php-snmp
+      - php-xml
+      - php-ldap
+      - php-gd
+      - rrdtool
+      - cacti
+    state: present
+  environment:
+    DEBIAN_FRONTEND: noninteractive
+  tags: [cacti]
+
+- name: "📝 Cacti Database Setup Notice"
+  debug:
+    msg: |
+      ⚠️  CACTI DATABASE CONFIGURATION:
+      
+      Database Server: 192.168.1.10 (int-srv)
+      Database Name: cacti
+      Database User: cacti
+      Database Password: Skills39!
+      
+      Manual Steps:
+      1. Access: http://{{ dmz_ip }}/cacti
+      2. Use database credentials above
+      3. Complete web installer
+      4. Add devices via web interface
+  tags: [cacti]

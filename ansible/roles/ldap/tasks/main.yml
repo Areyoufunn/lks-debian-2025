@@ -1,0 +1,94 @@
+---
+# LDAP Role - Main Tasks
+# Configures OpenLDAP directory service
+
+- name: "📋 Display LDAP Configuration Plan"
+  debug:
+    msg: |
+      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      📁 LDAP DIRECTORY CONFIGURATION
+      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      
+      Server: {{ inventory_hostname }}
+      Domain: {{ domain }}
+      Base DN: dc=lksn2025,dc=id
+      Admin Password: Skills39!
+      
+      Tasks:
+      1. Install OpenLDAP (slapd)
+      2. Configure base DN
+      3. Create OUs (People, Groups, VPN, Mail)
+      4. Create users (admin, ani, budi, kyw1)
+      5. Create groups (vpnusers, mailusers)
+      
+      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  when: explain_mode | default(false)
+  tags: [explain]
+
+- name: "📦 Install OpenLDAP Packages"
+  apt:
+    name:
+      - slapd
+      - ldap-utils
+    state: present
+    update_cache: yes
+  environment:
+    DEBIAN_FRONTEND: noninteractive
+  tags: [packages]
+
+- name: "⚙️ Configure slapd (Debconf)"
+  debconf:
+    name: slapd
+    question: "{{ item.question }}"
+    value: "{{ item.value }}"
+    vtype: "{{ item.vtype }}"
+  loop:
+    - { question: 'slapd/internal/adminpw', value: 'Skills39!', vtype: 'password' }
+    - { question: 'slapd/password1', value: 'Skills39!', vtype: 'password' }
+    - { question: 'slapd/password2', value: 'Skills39!', vtype: 'password' }
+    - { question: 'slapd/domain', value: '{{ domain }}', vtype: 'string' }
+    - { question: 'shared/organization', value: 'LKSN2025', vtype: 'string' }
+  tags: [config]
+
+- name: "🔄 Reconfigure slapd"
+  command: dpkg-reconfigure -f noninteractive slapd
+  tags: [config]
+
+- name: "📁 Copy LDIF Files"
+  template:
+    src: "{{ item }}.j2"
+    dest: "/tmp/{{ item }}"
+    mode: '0644'
+  loop:
+    - base.ldif
+    - users.ldif
+    - groups.ldif
+  tags: [ldif]
+
+- name: "➕ Add Base OUs"
+  command: "ldapadd -x -D cn=admin,dc=lksn2025,dc=id -w Skills39! -f /tmp/base.ldif"
+  register: ldap_base
+  failed_when: ldap_base.rc != 0 and 'Already exists' not in ldap_base.stderr
+  changed_when: ldap_base.rc == 0
+  tags: [ldif]
+
+- name: "👥 Add Users"
+  command: "ldapadd -x -D cn=admin,dc=lksn2025,dc=id -w Skills39! -f /tmp/users.ldif"
+  register: ldap_users
+  failed_when: ldap_users.rc != 0 and 'Already exists' not in ldap_users.stderr
+  changed_when: ldap_users.rc == 0
+  tags: [ldif]
+
+- name: "👥 Add Groups"
+  command: "ldapadd -x -D cn=admin,dc=lksn2025,dc=id -w Skills39! -f /tmp/groups.ldif"
+  register: ldap_groups
+  failed_when: ldap_groups.rc != 0 and 'Already exists' not in ldap_groups.stderr
+  changed_when: ldap_groups.rc == 0
+  tags: [ldif]
+
+- name: "🚀 Ensure slapd is running"
+  systemd:
+    name: slapd
+    enabled: yes
+    state: started
+  tags: [service]

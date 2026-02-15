@@ -1,0 +1,18 @@
+<VirtualHost *:443>
+    ServerName phpmyadmin.lksn2025.id
+    DocumentRoot /usr/share/phpmyadmin
+    
+    SSLEngine on
+    SSLCertificateFile /etc/ssl/lksn-ca/certs/phpmyadmin.crt
+    SSLCertificateKeyFile /etc/ssl/lksn-ca/private/phpmyadmin.key
+    
+    <Directory /usr/share/phpmyadmin>
+        Options FollowSymLinks
+        DirectoryIndex index.php
+        AllowOverride All
+        Require all granted
+    </Directory>
+    
+    ErrorLog ${APACHE_LOG_DIR}/phpmyadmin_error.log
+    CustomLog ${APACHE_LOG_DIR}/phpmyadmin_access.log combined
+</VirtualHost>

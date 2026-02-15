@@ -1,0 +1,128 @@
+---
+# Mail Role - Main Tasks
+# Postfix + Dovecot + Roundcube
+
+- name: "📋 Display Mail Server Configuration Plan"
+  debug:
+    msg: |
+      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      📧 MAIL SERVER CONFIGURATION
+      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      
+      Server: {{ inventory_hostname }}
+      Domain: {{ domain }}
+      
+      Components:
+      1. Postfix (SMTP) - Port 25, 587
+      2. Dovecot (IMAP) - Port 143, 993
+      3. Roundcube (Webmail) - HTTPS
+      4. LDAP Authentication
+      5. SSL/TLS Certificates
+      
+      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  when: explain_mode | default(false)
+  tags: [explain]
+
+- name: "📦 Install Mail Packages"
+  apt:
+    name:
+      - postfix
+      - dovecot-core
+      - dovecot-imapd
+      - dovecot-ldap
+      - apache2
+      - php
+      - php-mysql
+      - php-ldap
+      - php-intl
+      - php-mbstring
+      - roundcube
+      - roundcube-plugins
+    state: present
+    update_cache: yes
+  environment:
+    DEBIAN_FRONTEND: noninteractive
+  tags: [packages]
+
+- name: "⚙️ Configure Postfix Main"
+  template:
+    src: postfix-main.cf.j2
+    dest: /etc/postfix/main.cf
+    mode: '0644'
+    backup: yes
+  notify: restart postfix
+  tags: [postfix]
+
+- name: "⚙️ Configure Postfix Master"
+  template:
+    src: postfix-master.cf.j2
+    dest: /etc/postfix/master.cf
+    mode: '0644'
+    backup: yes
+  notify: restart postfix
+  tags: [postfix]
+
+- name: "⚙️ Configure Dovecot"
+  template:
+    src: dovecot.conf.j2
+    dest: /etc/dovecot/dovecot.conf
+    mode: '0644'
+    backup: yes
+  notify: restart dovecot
+  tags: [dovecot]
+
+- name: "⚙️ Configure Dovecot LDAP Auth"
+  template:
+    src: dovecot-ldap.conf.j2
+    dest: /etc/dovecot/dovecot-ldap.conf
+    mode: '0600'
+    backup: yes
+  notify: restart dovecot
+  tags: [dovecot]
+
+- name: "⚙️ Configure Roundcube"
+  template:
+    src: roundcube-config.inc.php.j2
+    dest: /etc/roundcube/config.inc.php
+    mode: '0640'
+    owner: root
+    group: www-data
+    backup: yes
+  notify: restart apache2
+  tags: [roundcube]
+
+- name: "🔗 Enable Apache Modules"
+  apache2_module:
+    name: "{{ item }}"
+    state: present
+  loop:
+    - ssl
+    - rewrite
+  notify: restart apache2
+  tags: [apache]
+
+- name: "⚙️ Configure Roundcube VirtualHost"
+  template:
+    src: roundcube-vhost.conf.j2
+    dest: /etc/apache2/sites-available/roundcube.conf
+    mode: '0644'
+  notify: restart apache2
+  tags: [apache]
+
+- name: "🔗 Enable Roundcube Site"
+  command: a2ensite roundcube
+  args:
+    creates: /etc/apache2/sites-enabled/roundcube.conf
+  notify: restart apache2
+  tags: [apache]
+
+- name: "🚀 Enable and Start Services"
+  systemd:
+    name: "{{ item }}"
+    enabled: yes
+    state: started
+  loop:
+    - postfix
+    - dovecot
+    - apache2
+  tags: [service]

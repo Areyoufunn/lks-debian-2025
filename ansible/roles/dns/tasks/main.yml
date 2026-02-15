@@ -1,0 +1,116 @@
+---
+# DNS Role - Main Tasks
+# Configures Bind9 DNS Server with all zones
+
+- name: "📋 Display DNS Configuration Plan"
+  debug:
+    msg: |
+      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      🌐 DNS SERVER CONFIGURATION
+      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      
+      Server: {{ inventory_hostname }}
+      IP: {{ int_ip }}
+      Domain: {{ domain }}
+      
+      Tasks:
+      1. Install Bind9
+      2. Configure named.conf.options
+      3. Configure named.conf.local
+      4. Create forward zone ({{ domain }})
+      5. Create reverse zones (4 zones)
+      6. Start and enable service
+      
+      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  when: explain_mode | default(false)
+  tags: [explain]
+
+- name: "📦 Install Bind9 Packages"
+  apt:
+    name:
+      - bind9
+      - bind9utils
+      - bind9-doc
+      - dnsutils
+    state: present
+    update_cache: yes
+  tags: [packages]
+
+- name: "⚙️ Configure named.conf.options"
+  template:
+    src: named.conf.options.j2
+    dest: /etc/bind/named.conf.options
+    owner: root
+    group: bind
+    mode: '0644'
+    backup: yes
+  notify: reload bind9
+  tags: [config]
+
+- name: "⚙️ Configure named.conf.local"
+  template:
+    src: named.conf.local.j2
+    dest: /etc/bind/named.conf.local
+    owner: root
+    group: bind
+    mode: '0644'
+    backup: yes
+  notify: reload bind9
+  tags: [config]
+
+- name: "📁 Create zones directory"
+  file:
+    path: /etc/bind/zones
+    state: directory
+    owner: bind
+    group: bind
+    mode: '0755'
+  tags: [zones]
+
+- name: "🌍 Create Forward Zone File"
+  template:
+    src: db.domain.j2
+    dest: "/etc/bind/zones/db.{{ domain }}"
+    owner: bind
+    group: bind
+    mode: '0644'
+    backup: yes
+  notify: reload bind9
+  tags: [zones]
+
+- name: "🔄 Create Reverse Zone Files"
+  template:
+    src: "{{ item.template }}"
+    dest: "/etc/bind/zones/{{ item.file }}"
+    owner: bind
+    group: bind
+    mode: '0644'
+    backup: yes
+  loop:
+    - { template: 'db.192.168.27.j2', file: 'db.192.168.27' }
+    - { template: 'db.192.168.1.j2', file: 'db.192.168.1' }
+    - { template: 'db.172.16.1.j2', file: 'db.172.16.1' }
+    - { template: 'db.10.0.0.j2', file: 'db.10.0.0' }
+  notify: reload bind9
+  tags: [zones]
+
+- name: "🚀 Enable and Start Bind9 Service"
+  systemd:
+    name: bind9
+    enabled: yes
+    state: started
+  tags: [service]
+
+- name: "✅ Check Bind9 Configuration"
+  command: named-checkconf
+  register: checkconf
+  changed_when: false
+  failed_when: checkconf.rc != 0
+  tags: [verify]
+
+- name: "✅ Check Zone Files"
+  command: "named-checkzone {{ domain }} /etc/bind/zones/db.{{ domain }}"
+  register: checkzone
+  changed_when: false
+  failed_when: checkzone.rc != 0
+  tags: [verify]

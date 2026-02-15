@@ -1,0 +1,26 @@
+vrrp_script chk_haproxy {
+    script "/usr/bin/killall -0 haproxy"
+    interval 2
+    weight 2
+}
+
+vrrp_instance VI_1 {
+    state {{ keepalived_state }}
+    interface ens18
+    virtual_router_id 51
+    priority {{ keepalived_priority }}
+    advert_int 1
+    
+    authentication {
+        auth_type PASS
+        auth_pass Skills39!
+    }
+    
+    virtual_ipaddress {
+        {{ vip }}/24
+    }
+    
+    track_script {
+        chk_haproxy
+    }
+}

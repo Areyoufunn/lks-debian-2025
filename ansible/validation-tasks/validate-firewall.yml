@@ -1,0 +1,148 @@
+---
+# Firewall Service Validation Tasks
+# Validates manually configured firewall
+
+- name: "🔍 CHECK: nftables Package Installed"
+  command: dpkg -l nftables
+  register: nft_installed
+  failed_when: false
+  changed_when: false
+
+- name: "❌ ERROR: nftables Not Installed"
+  debug:
+    msg: |
+      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      ❌ ERROR: nftables tidak terinstall
+      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      
+      MASALAH:
+      Package nftables tidak ditemukan.
+      
+      PENJELASAN:
+      nftables adalah modern firewall untuk Linux yang
+      menggantikan iptables. Tanpa nftables, tidak ada
+      firewall protection dan semua traffic akan allowed.
+      
+      CARA MEMPERBAIKI:
+      apt install nftables -y
+      systemctl enable nftables
+      systemctl start nftables
+      
+      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  when: nft_installed.rc != 0
+
+- name: "🔍 CHECK: IP Forwarding Enabled"
+  command: sysctl net.ipv4.ip_forward
+  register: ip_forward
+  failed_when: false
+  changed_when: false
+
+- name: "❌ ERROR: IP Forwarding Disabled"
+  debug:
+    msg: |
+      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      ❌ ERROR: IP forwarding tidak enabled
+      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      
+      MASALAH:
+      net.ipv4.ip_forward = 0 (disabled)
+      
+      PENJELASAN:
+      IP forwarding diperlukan agar fw-srv bisa route traffic
+      antar networks (WAN ↔ INT ↔ DMZ). Tanpa IP forwarding,
+      packets tidak akan di-forward dan inter-network
+      communication akan gagal total.
+      
+      DAMPAK:
+      - INT zone tidak bisa access internet
+      - DMZ tidak bisa access INT services
+      - Semua routing akan fail
+      
+      CARA MEMPERBAIKI:
+      1. Enable sementara:
+         sysctl -w net.ipv4.ip_forward=1
+      
+      2. Enable permanent:
+         echo "net.ipv4.ip_forward=1" >> /etc/sysctl.conf
+         sysctl -p
+      
+      3. Verify:
+         sysctl net.ipv4.ip_forward
+         # Should show: net.ipv4.ip_forward = 1
+      
+      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  when: "'net.ipv4.ip_forward = 0' in ip_forward.stdout"
+
+- name: "🔍 CHECK: NAT Rules Configured"
+  shell: nft list table ip nat 2>/dev/null | grep -q masquerade
+  register: nat_rules
+  failed_when: false
+  changed_when: false
+
+- name: "❌ ERROR: NAT/Masquerade Not Configured"
+  debug:
+    msg: |
+      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      ❌ ERROR: NAT masquerade rules tidak ditemukan
+      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      
+      MASALAH:
+      Tidak ada masquerade rules di nftables NAT table.
+      
+      PENJELASAN:
+      NAT masquerade diperlukan untuk translate internal
+      private IPs (192.168.1.x, 172.16.1.x) ke public IP
+      (192.168.27.200) saat access internet.
+      
+      Tanpa NAT:
+      - Internal hosts tidak bisa access internet
+      - Packets dengan private IP akan di-drop oleh ISP
+      - Return traffic tidak tahu kemana harus kembali
+      
+      CARA MEMPERBAIKI:
+      1. Create NAT table:
+         nft add table ip nat
+      
+      2. Add postrouting chain:
+         nft add chain ip nat postrouting { type nat hook postrouting priority 100 \; }
+      
+      3. Add masquerade rule:
+         nft add rule ip nat postrouting oifname "ens18" masquerade
+      
+      4. Verify:
+         nft list table ip nat
+      
+      5. Save rules:
+         nft list ruleset > /etc/nftables.conf
+      
+      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  when: nat_rules.rc != 0
+
+- name: "🔍 CHECK: Network Interfaces Configuration"
+  command: ip addr show
+  register: interfaces
+  changed_when: false
+
+- name: "⚠ CHECK: All 4 Interfaces Present"
+  debug:
+    msg: |
+      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      ⚠ WARNING: Checking network interfaces
+      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      
+      fw-srv harus memiliki 4 network interfaces:
+      
+      ens18 (WAN):  192.168.27.200/24 → Internet
+      ens19 (INT):  192.168.1.254/24  → Internal Zone
+      ens20 (DMZ):  172.16.1.254/24   → DMZ Zone
+      ens21 (MGMT): 10.0.0.11/24      → Management
+      
+      Current interfaces:
+      {{ interfaces.stdout }}
+      
+      Jika ada interface yang missing, check:
+      1. /etc/network/interfaces configuration
+      2. VM network adapter settings di Proxmox
+      3. Interface status: ip link show
+      
+      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

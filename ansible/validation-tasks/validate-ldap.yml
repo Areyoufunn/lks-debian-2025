@@ -1,0 +1,95 @@
+---
+# LDAP Service Validation Tasks
+
+- name: "🔍 CHECK: slapd Installed"
+  command: dpkg -l slapd
+  register: slapd_installed
+  failed_when: false
+  changed_when: false
+
+- name: "❌ ERROR: slapd Not Installed"
+  debug:
+    msg: |
+      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      ❌ ERROR: slapd (OpenLDAP) tidak terinstall
+      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      
+      MASALAH:
+      Package slapd tidak ditemukan.
+      
+      PENJELASAN:
+      slapd adalah OpenLDAP server untuk centralized
+      authentication. Tanpa LDAP, users tidak bisa login
+      ke services yang require LDAP authentication.
+      
+      CARA MEMPERBAIKI:
+      apt install slapd ldap-utils -y
+      dpkg-reconfigure slapd
+      # Domain: lksn2025.id
+      # Organization: LKSN2025
+      # Admin password: Skills39!
+      
+      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  when: slapd_installed.rc != 0
+
+- name: "🔍 CHECK: LDAP Port 389 Listening"
+  wait_for:
+    port: 389
+    timeout: 5
+  register: ldap_port
+  failed_when: false
+  changed_when: false
+
+- name: "❌ ERROR: LDAP Not Listening on Port 389"
+  debug:
+    msg: |
+      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      ❌ ERROR: LDAP tidak listening di port 389
+      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      
+      MASALAH:
+      slapd tidak listening pada port 389 (LDAP).
+      
+      PENJELASAN:
+      Port 389 adalah standard LDAP port. Services yang
+      memerlukan LDAP authentication (mail, VPN) akan
+      connect ke port ini.
+      
+      CARA MEMPERBAIKI:
+      systemctl status slapd
+      systemctl restart slapd
+      netstat -tuln | grep 389
+      
+      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  when: ldap_port.failed
+
+- name: "🔍 CHECK: Base DN Exists"
+  shell: ldapsearch -x -b "dc=lksn2025,dc=id" -s base 2>/dev/null | grep -q "dc=lksn2025"
+  register: base_dn
+  failed_when: false
+  changed_when: false
+
+- name: "❌ ERROR: Base DN Not Configured"
+  debug:
+    msg: |
+      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      ❌ ERROR: Base DN dc=lksn2025,dc=id tidak ditemukan
+      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      
+      MASALAH:
+      LDAP base DN tidak configured atau tidak accessible.
+      
+      PENJELASAN:
+      Base DN adalah root of LDAP directory tree. Semua
+      users, groups, dan OUs berada di bawah base DN ini.
+      
+      CARA MEMPERBAIKI:
+      1. Reconfigure slapd:
+         dpkg-reconfigure slapd
+         Domain: lksn2025.id
+      
+      2. Verify:
+         ldapsearch -x -b "dc=lksn2025,dc=id" -s base
+      
+      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  when: base_dn.rc != 0

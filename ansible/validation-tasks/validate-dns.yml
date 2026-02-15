@@ -1,0 +1,340 @@
+---
+# DNS Service Validation Tasks
+# Validates manually configured DNS server
+
+- name: "🔍 CHECK: Bind9 Package Installed"
+  command: dpkg -l bind9
+  register: bind9_installed
+  failed_when: false
+  changed_when: false
+
+- name: "❌ ERROR: Bind9 Not Installed"
+  debug:
+    msg: |
+      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      ❌ ERROR: Bind9 tidak terinstall
+      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      
+      MASALAH:
+      Package bind9 tidak ditemukan di sistem.
+      
+      PENJELASAN:
+      Bind9 adalah DNS server yang diperlukan untuk resolve
+      domain names. Tanpa Bind9, DNS service tidak akan bisa
+      berjalan dan semua hostname resolution akan gagal.
+      
+      CARA MEMPERBAIKI:
+      1. Install bind9:
+         apt update
+         apt install bind9 bind9utils -y
+      
+      2. Verify installation:
+         dpkg -l | grep bind9
+      
+      3. Check service status:
+         systemctl status bind9
+      
+      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  when: bind9_installed.rc != 0
+
+- name: "✓ PASS: Bind9 Installed"
+  debug:
+    msg: "✓ Bind9 package is installed"
+  when: bind9_installed.rc == 0
+
+- name: "🔍 CHECK: Bind9 Service Running"
+  systemd:
+    name: bind9
+  register: bind9_service
+  failed_when: false
+  changed_when: false
+
+- name: "❌ ERROR: Bind9 Service Not Running"
+  debug:
+    msg: |
+      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      ❌ ERROR: Bind9 service tidak berjalan
+      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      
+      MASALAH:
+      Service bind9 tidak dalam status 'running'.
+      
+      PENJELASAN:
+      DNS server harus running untuk menerima DNS queries.
+      Jika service tidak running, semua DNS lookups akan
+      timeout dan aplikasi tidak bisa resolve hostnames.
+      
+      KEMUNGKINAN PENYEBAB:
+      1. Configuration error di /etc/bind/named.conf
+      2. Zone file syntax error
+      3. Permission issues
+      4. Port 53 sudah digunakan aplikasi lain
+      
+      CARA MEMPERBAIKI:
+      1. Check service status:
+         systemctl status bind9
+      
+      2. Check logs untuk error:
+         journalctl -u bind9 -n 50
+      
+      3. Validate configuration:
+         named-checkconf
+      
+      4. Start service:
+         systemctl start bind9
+         systemctl enable bind9
+      
+      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  when: bind9_service.status.ActiveState != 'active'
+
+- name: "✓ PASS: Bind9 Service Running"
+  debug:
+    msg: "✓ Bind9 service is active and running"
+  when: bind9_service.status.ActiveState == 'active'
+
+- name: "🔍 CHECK: DNS Listening on Port 53"
+  wait_for:
+    port: 53
+    timeout: 5
+  register: dns_port
+  failed_when: false
+  changed_when: false
+
+- name: "❌ ERROR: DNS Not Listening on Port 53"
+  debug:
+    msg: |
+      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      ❌ ERROR: DNS tidak listening di port 53
+      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      
+      MASALAH:
+      Bind9 tidak listening pada port 53 (standard DNS port).
+      
+      PENJELASAN:
+      Port 53 adalah standard port untuk DNS (UDP dan TCP).
+      Jika Bind9 tidak listen di port ini, client tidak bisa
+      melakukan DNS queries dan semua hostname resolution
+      akan gagal.
+      
+      KEMUNGKINAN PENYEBAB:
+      1. Bind9 configured untuk listen di IP tertentu saja
+      2. Firewall blocking port 53
+      3. Another service menggunakan port 53
+      4. Bind9 failed to start karena config error
+      
+      CARA MEMPERBAIKI:
+      1. Check what's using port 53:
+         netstat -tulpn | grep :53
+         ss -tulpn | grep :53
+      
+      2. Check bind9 listen configuration:
+         grep "listen-on" /etc/bind/named.conf.options
+      
+      3. Pastikan listen-on includes your IP:
+         listen-on { 192.168.1.10; 127.0.0.1; };
+      
+      4. Check firewall:
+         iptables -L -n | grep 53
+         nft list ruleset | grep 53
+      
+      5. Restart bind9:
+         systemctl restart bind9
+      
+      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  when: dns_port.failed
+
+- name: "✓ PASS: DNS Listening on Port 53"
+  debug:
+    msg: "✓ DNS is listening on port 53"
+  when: not dns_port.failed
+
+- name: "🔍 CHECK: Forward Zone File Exists"
+  stat:
+    path: /etc/bind/zones/db.lksn2025.id
+  register: forward_zone
+
+- name: "❌ ERROR: Forward Zone File Missing"
+  debug:
+    msg: |
+      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      ❌ ERROR: Forward zone file tidak ditemukan
+      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      
+      MASALAH:
+      File /etc/bind/zones/db.lksn2025.id tidak ada.
+      
+      PENJELASAN:
+      Forward zone file berisi mapping dari hostname ke IP
+      address (A records, CNAME, MX, dll). Tanpa zone file
+      ini, DNS tidak bisa resolve domain lksn2025.id dan
+      semua subdomain-nya.
+      
+      YANG HARUS ADA DI ZONE FILE:
+      - SOA record (Start of Authority)
+      - NS record (Name Server)
+      - A records untuk semua hosts
+      - MX record untuk mail
+      - CNAME records (www, webmail, dll)
+      
+      CARA MEMPERBAIKI:
+      1. Create directory:
+         mkdir -p /etc/bind/zones
+      
+      2. Create zone file:
+         cat > /etc/bind/zones/db.lksn2025.id << 'EOF'
+         $TTL 86400
+         @   IN  SOA ns.lksn2025.id. admin.lksn2025.id. (
+                 2024010101  ; Serial
+                 3600        ; Refresh
+                 1800        ; Retry
+                 604800      ; Expire
+                 86400 )     ; Minimum TTL
+         
+         ; Name Servers
+         @       IN  NS      ns.lksn2025.id.
+         
+         ; A Records
+         ns      IN  A       192.168.1.10
+         fw      IN  A       192.168.27.200
+         www     IN  A       172.16.1.100
+         mail    IN  A       172.16.1.10
+         
+         ; MX Record
+         @       IN  MX  10  mail.lksn2025.id.
+         EOF
+      
+      3. Set permissions:
+         chown bind:bind /etc/bind/zones/db.lksn2025.id
+         chmod 644 /etc/bind/zones/db.lksn2025.id
+      
+      4. Add zone to named.conf.local:
+         zone "lksn2025.id" {
+             type master;
+             file "/etc/bind/zones/db.lksn2025.id";
+         };
+      
+      5. Check syntax:
+         named-checkzone lksn2025.id /etc/bind/zones/db.lksn2025.id
+      
+      6. Reload bind9:
+         systemctl reload bind9
+      
+      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  when: not forward_zone.stat.exists
+
+- name: "✓ PASS: Forward Zone File Exists"
+  debug:
+    msg: "✓ Forward zone file exists"
+  when: forward_zone.stat.exists
+
+- name: "🔍 CHECK: Zone File Syntax"
+  command: named-checkzone lksn2025.id /etc/bind/zones/db.lksn2025.id
+  register: zone_syntax
+  failed_when: false
+  changed_when: false
+  when: forward_zone.stat.exists
+
+- name: "❌ ERROR: Zone File Has Syntax Errors"
+  debug:
+    msg: |
+      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      ❌ ERROR: Zone file memiliki syntax error
+      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      
+      MASALAH:
+      Zone file /etc/bind/zones/db.lksn2025.id tidak valid.
+      
+      ERROR OUTPUT:
+      {{ zone_syntax.stderr }}
+      
+      PENJELASAN:
+      Zone file harus mengikuti format DNS yang strict.
+      Syntax error akan prevent Bind9 dari loading zone,
+      sehingga domain tidak bisa di-resolve.
+      
+      COMMON ERRORS:
+      1. Missing dot (.) di akhir FQDN
+         ✗ ns.lksn2025.id
+         ✓ ns.lksn2025.id.
+      
+      2. Serial number tidak increment
+         - Harus increment setiap kali edit
+         - Format: YYYYMMDDnn (2024010101)
+      
+      3. Missing semicolon di SOA record
+      
+      4. Wrong indentation
+      
+      5. Missing @ symbol untuk domain root
+      
+      CARA MEMPERBAIKI:
+      1. Check syntax error di output di atas
+      
+      2. Common fixes:
+         - Add dot (.) di akhir semua FQDN
+         - Increment serial number
+         - Check SOA record format
+         - Verify all required records (SOA, NS, A)
+      
+      3. Validate after fix:
+         named-checkzone lksn2025.id /etc/bind/zones/db.lksn2025.id
+      
+      4. Reload bind9:
+         systemctl reload bind9
+      
+      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  when: forward_zone.stat.exists and zone_syntax.rc != 0
+
+- name: "✓ PASS: Zone File Syntax Valid"
+  debug:
+    msg: "✓ Zone file syntax is valid"
+  when: forward_zone.stat.exists and zone_syntax.rc == 0
+
+- name: "🔍 CHECK: DNS Resolution Test"
+  command: dig @localhost lksn2025.id +short
+  register: dns_test
+  failed_when: false
+  changed_when: false
+
+- name: "⚠ WARNING: DNS Resolution Not Working"
+  debug:
+    msg: |
+      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      ⚠ WARNING: DNS resolution test gagal
+      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      
+      MASALAH:
+      Query untuk lksn2025.id tidak return hasil.
+      
+      PENJELASAN:
+      Meskipun Bind9 running dan zone file exists, DNS
+      query tidak return expected result. Ini bisa karena:
+      
+      KEMUNGKINAN PENYEBAB:
+      1. Zone belum di-load oleh Bind9
+      2. Zone tidak di-declare di named.conf.local
+      3. Recursion disabled
+      4. ACL blocking queries
+      
+      CARA MEMPERBAIKI:
+      1. Check if zone is loaded:
+         rndc status
+         rndc zonestatus lksn2025.id
+      
+      2. Check named.conf.local:
+         grep "lksn2025.id" /etc/bind/named.conf.local
+      
+      3. Reload zones:
+         rndc reload
+      
+      4. Test again:
+         dig @localhost lksn2025.id
+         dig @localhost www.lksn2025.id
+      
+      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  when: dns_test.stdout == ""
+
+- name: "✓ PASS: DNS Resolution Working"
+  debug:
+    msg: "✓ DNS resolution is working correctly"
+  when: dns_test.stdout != ""
