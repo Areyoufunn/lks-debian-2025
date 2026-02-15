@@ -17,23 +17,23 @@ if [ "$EUID" -ne 0 ]; then
     exit 1
 fi
 
-echo "[1/6] Updating system..."
+echo "[1/7] Updating system..."
 apt update
 apt upgrade -y
 
-echo "[2/6] Installing Ansible and dependencies..."
+echo "[2/7] Installing Ansible and dependencies..."
 apt install -y ansible python3-pip git curl wget net-tools dnsutils
 
-echo "[3/6] Installing Python dependencies..."
+echo "[3/7] Installing Python dependencies..."
 pip3 install pymysql
 
-echo "[4/6] Installing network tools..."
+echo "[4/7] Installing network tools..."
 apt install -y nmap tcpdump netcat-openbsd telnet ftp lftp
 
-echo "[5/6] Installing validation tools..."
+echo "[5/7] Installing validation tools..."
 apt install -y bind9-utils ldap-utils mysql-client snmp snmp-mibs-downloader
 
-echo "[6/6] Cloning LKS automation repository..."
+echo "[6/7] Cloning LKS automation repository..."
 cd /root
 if [ -d "lks-debian-2025" ]; then
     echo "Repository already exists, pulling latest..."
@@ -44,6 +44,22 @@ else
     cd lks-debian-2025
 fi
 
+echo "[7/7] Setting up SSH keys for server access..."
+cd /root/lks-debian-2025
+chmod +x setup-juri-ssh-keys.sh
+
+echo ""
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "  ⚠️  SSH KEY DISTRIBUTION REQUIRED"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+echo "To distribute SSH keys to all servers, run:"
+echo "  ./setup-juri-ssh-keys.sh"
+echo ""
+echo "This will:"
+echo "  1. Generate SSH key pair"
+echo "  2. Copy public key to all 8 servers"
+echo "  3. Enable passwordless SSH access"
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "  ✅ Juri Server Setup Complete!"
