@@ -40,44 +40,38 @@ declare -A SERVERS=(
 echo -e "${CYAN}Installing Python on 8 target servers...${NC}"
 echo ""
 
+count=0
 SUCCESS=0
 FAILED=0
-FAILED_SERVERS=()
 
-# Install Python on each server
+# Simple loop - same pattern as setup-juri-ssh-keys.sh
 for hostname in fw-srv int-srv mail-srv web-01 web-02 db-srv mon-srv ani-clt; do
+    count=$((count + 1))
     ip="${SERVERS[$hostname]}"
     
-    echo -e "${YELLOW}━━━ Installing Python on ${hostname} (${ip}) ━━━${NC}"
+    echo "[$count/8] Processing ${hostname} (${ip})..."
     
-    # Test connectivity
-    if ! ping -c 1 -W 2 ${ip} &>/dev/null; then
-        echo -e "${RED}  ✗ Cannot reach ${hostname}${NC}"
-        ((FAILED++))
-        FAILED_SERVERS+=("${hostname}")
-        echo ""
-        continue
-    fi
+    # Install Python3 directly
+    ssh -o ConnectTimeout=5 -o StrictHostKeyChecking=no root@${ip} \
+        "apt update -qq && DEBIAN_FRONTEND=noninteractive apt install -y python3 python3-apt python3-pip"
     
-    # Install Python3
-    echo "  Installing python3, python3-apt, python3-pip..."
-    if ssh -o ConnectTimeout=5 -o StrictHostKeyChecking=no root@${ip} \
-        "apt update -qq && DEBIAN_FRONTEND=noninteractive apt install -y python3 python3-apt python3-pip" &>/dev/null; then
-        echo -e "${GREEN}  ✓ Python installed on ${hostname}${NC}"
-        
-        # Verify Python version
+    if [ $? -eq 0 ]; then
+        # Get Python version
         PYTHON_VERSION=$(ssh root@${ip} "python3 --version" 2>&1)
-        echo "    Version: ${PYTHON_VERSION}"
-        
-        ((SUCCESS++))
+        echo -e "${GREEN}  SUCCESS: ${hostname} - ${PYTHON_VERSION}${NC}"
+        SUCCESS=$((SUCCESS + 1))
     else
-        echo -e "${RED}  ✗ Failed to install Python on ${hostname}${NC}"
-        ((FAILED++))
-        FAILED_SERVERS+=("${hostname}")
+        echo -e "${RED}  FAILED: ${hostname}${NC}"
+        FAILED=$((FAILED + 1))
     fi
     
     echo ""
+    sleep 1
 done
+
+echo "Installation complete!"
+echo "Processed ${count} servers"
+echo ""
 
 # Summary
 echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
@@ -88,14 +82,6 @@ echo -e "Total Servers: ${CYAN}8${NC}"
 echo -e "Success:       ${GREEN}${SUCCESS}${NC}"
 echo -e "Failed:        ${RED}${FAILED}${NC}"
 echo ""
-
-if [ ${#FAILED_SERVERS[@]} -gt 0 ]; then
-    echo -e "${YELLOW}Failed servers:${NC}"
-    for server in "${FAILED_SERVERS[@]}"; do
-        echo "  - ${server} (${SERVERS[$server]})"
-    done
-    echo ""
-fi
 
 if [ $FAILED -eq 0 ]; then
     echo -e "${GREEN}✓ Python installed on all servers!${NC}"
