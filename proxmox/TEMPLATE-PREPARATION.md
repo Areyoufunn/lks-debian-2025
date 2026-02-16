@@ -1,14 +1,16 @@
 # Proxmox Template Preparation Guide
 
-Panduan untuk membuat Debian template dengan cloud-init dan SSH pre-installed.
+Panduan untuk membuat Debian template dengan cloud-init, SSH, dan **qemu-guest-agent** pre-installed.
 
 ## 🎯 Overview
 
 Template ini akan digunakan untuk clone semua VMs dengan fitur:
-- ✅ Cloud-init untuk auto-configuration
-- ✅ SSH server pre-installed
-- ✅ MGMT IP auto-configured
-- ✅ Ready for password authentication
+- ✅ **qemu-guest-agent** - REQUIRED untuk automated MGMT IP configuration
+- ✅ **openssh-server** - Pre-installed dan enabled
+- ✅ Cloud-init untuk basic user/password setup
+- ✅ Ready for automation
+
+> **IMPORTANT:** qemu-guest-agent adalah WAJIB untuk automated MGMT IP configuration!
 
 ## 📋 Step-by-Step
 
