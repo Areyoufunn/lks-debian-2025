@@ -63,14 +63,12 @@ configure_mgmt_ip() {
     
     echo -e "${YELLOW}━━━ Configuring ${hostname} (${mgmt_ip}) ━━━${NC}"
     
-    # Create network config
+    # Create network config using echo instead of heredoc
     echo "Creating network configuration..."
-    qm guest exec ${vmid} -- /bin/bash -c "cat > /etc/network/interfaces.d/${iface} << 'EOF'
-auto ${iface}
-iface ${iface} inet static
-    address ${mgmt_ip}
-    netmask 255.255.255.0
-EOF" &>/dev/null
+    qm guest exec ${vmid} -- /bin/bash -c "echo 'auto ${iface}' > /etc/network/interfaces.d/${iface}" &>/dev/null
+    qm guest exec ${vmid} -- /bin/bash -c "echo 'iface ${iface} inet static' >> /etc/network/interfaces.d/${iface}" &>/dev/null
+    qm guest exec ${vmid} -- /bin/bash -c "echo '    address ${mgmt_ip}' >> /etc/network/interfaces.d/${iface}" &>/dev/null
+    qm guest exec ${vmid} -- /bin/bash -c "echo '    netmask 255.255.255.0' >> /etc/network/interfaces.d/${iface}" &>/dev/null
     
     if [ $? -eq 0 ]; then
         echo -e "${GREEN}✓ Config file created${NC}"
@@ -89,14 +87,23 @@ EOF" &>/dev/null
     
     # Verify
     echo "Verifying configuration..."
-    local result=$(qm guest exec ${vmid} -- /bin/bash -c "ip addr show ${iface} | grep 'inet ${mgmt_ip}'" 2>/dev/null)
+    sleep 1  # Give it a moment
+    local result=$(qm guest exec ${vmid} -- /bin/bash -c "ip addr show ${iface} | grep '${mgmt_ip}'" 2>/dev/null)
     
     if [ -n "$result" ]; then
         echo -e "${GREEN}✓ ${hostname} configured successfully (${mgmt_ip})${NC}"
         return 0
     else
         echo -e "${YELLOW}⚠ Configuration applied but verification unclear${NC}"
-        return 0
+        echo -e "${YELLOW}  Trying to verify manually...${NC}"
+        # Try ping test
+        if ping -c 1 -W 2 ${mgmt_ip} &>/dev/null; then
+            echo -e "${GREEN}✓ ${hostname} is reachable at ${mgmt_ip}${NC}"
+            return 0
+        else
+            echo -e "${RED}✗ ${hostname} not reachable${NC}"
+            return 1
+        fi
     fi
 }
 
