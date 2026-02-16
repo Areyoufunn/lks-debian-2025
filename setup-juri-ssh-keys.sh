@@ -51,16 +51,22 @@ else
 fi
 
 echo ""
-echo -e "${CYAN}[2/4] Installing sshpass (for automated password input)...${NC}"
+echo -e "${CYAN}[2/4] Installing required tools...${NC}"
 echo ""
 
+# Install sshpass
 if ! command -v sshpass &> /dev/null; then
     echo "Installing sshpass..."
     apt update -qq
-    apt install -y sshpass
-    echo -e "${GREEN}✓ sshpass installed${NC}"
+    apt install -y sshpass netcat-openbsd
+    echo -e "${GREEN}✓ sshpass and netcat installed${NC}"
 else
     echo -e "${GREEN}✓ sshpass already installed${NC}"
+    # Ensure netcat is also installed
+    if ! command -v nc &> /dev/null; then
+        apt install -y netcat-openbsd
+        echo -e "${GREEN}✓ netcat installed${NC}"
+    fi
 fi
 
 echo ""
@@ -104,9 +110,9 @@ for hostname in "${ORDERED_SERVERS[@]}"; do
     fi
     echo -e "${GREEN}  ✓ ${hostname} is reachable${NC}"
     
-    # Test SSH port
+    # Test SSH port with nc (more reliable than /dev/tcp)
     echo "  Testing SSH port..."
-    if ! timeout 3 bash -c "echo > /dev/tcp/${ip}/22" 2>/dev/null; then
+    if ! nc -z -w 3 ${ip} 22 2>/dev/null; then
         echo -e "${RED}  ✗ SSH port not open on ${hostname}${NC}"
         echo -e "${YELLOW}    Please ensure SSH is installed and running${NC}"
         ((FAILED++))
@@ -130,6 +136,10 @@ for hostname in "${ORDERED_SERVERS[@]}"; do
         ((FAILED++))
         FAILED_SERVERS+=("${hostname}")
     fi
+    echo ""
+    
+    # Debug: Show progress
+    echo -e "${CYAN}  Progress: $((SUCCESS + FAILED)) / ${#ORDERED_SERVERS[@]} servers processed${NC}"
     echo ""
 done
 
