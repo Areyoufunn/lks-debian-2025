@@ -109,22 +109,6 @@
   notify: restart apache2
   tags: [apache]
 
-- name: "� Copy phpMyAdmin Certificate from CA Server"
-  copy:
-    src: /etc/ssl/lksn-ca/certs/phpmyadmin.crt
-    dest: /etc/ssl/certs/phpmyadmin.crt
-    mode: '0644'
-    remote_src: yes
-  tags: [ssl]
-
-- name: "� Copy phpMyAdmin Private Key from CA Server"
-  copy:
-    src: /etc/ssl/lksn-ca/private/phpmyadmin.key
-    dest: /etc/ssl/private/phpmyadmin.key
-    mode: '0600'
-    remote_src: yes
-  tags: [ssl]
-
 - name: "⚙️ Configure phpMyAdmin VirtualHost"
   template:
     src: phpmyadmin-ssl.conf.j2
