@@ -67,16 +67,14 @@ clone_vm() {
         qm set ${vmid} --net${i} virtio,bridge=${bridges[$i]}
     done
     
-    # Configure cloud-init for MGMT network and SSH
+    # Configure cloud-init for basic setup only
+    # Note: MGMT IP must be configured manually (see MGMT-IP-MANUAL-CONFIG.md)
     qm set ${vmid} --ide2 ${STORAGE}:cloudinit
     qm set ${vmid} --ciuser root
     qm set ${vmid} --cipassword 12345678
     
-    # Set MGMT IP on last interface
-    local last_idx=$((${#bridges[@]} - 1))
-    qm set ${vmid} --ipconfig${last_idx} "ip=${mgmt_ip}/24"
-    
-    echo -e "${GREEN}✓ VM ${vmid} (${name}) cloned with MGMT IP ${mgmt_ip}${NC}"
+    echo -e "${GREEN}✓ VM ${vmid} (${name}) cloned${NC}"
+    echo -e "${YELLOW}  ⚠ MGMT IP ${mgmt_ip} must be configured manually${NC}"
     echo ""
 }
 
@@ -143,10 +141,13 @@ echo -e "${YELLOW}Next Steps:${NC}"
 echo "  1. Start all VMs:"
 echo "     for i in {400..408}; do qm start \$i; done"
 echo ""
-echo "  2. Wait for cloud-init (~2 minutes)"
+echo "  2. Configure MGMT IPs manually (cloud-init not working)"
+echo "     See: proxmox/MGMT-IP-MANUAL-CONFIG.md"
+echo "     Quick: Open each VM console and run config commands"
 echo ""
-echo "  3. Configure production IPs manually (WAN, INT, DMZ)"
-echo "     MGMT IPs already configured automatically!"
+echo "  3. Verify MGMT IPs:"
+echo "     ping 10.0.0.50  # juri-srv"
+echo "     ping 10.0.0.10  # int-srv"
 echo ""
 echo "  4. Setup SSH keys from juri-srv:"
 echo "     ssh root@10.0.0.50  # Password: 12345678"
@@ -158,5 +159,6 @@ echo "     cd ansible"
 echo "     ansible all -m ping"
 echo "     ansible-playbook site.yml"
 echo ""
-echo -e "${GREEN}✓ VMs ready! MGMT network configured for Ansible.${NC}"
+echo -e "${YELLOW}⚠ IMPORTANT: MGMT IPs must be configured manually!${NC}"
+echo -e "${CYAN}   See MGMT-IP-MANUAL-CONFIG.md for detailed instructions${NC}"
 echo ""
