@@ -46,75 +46,35 @@
     state: started
   tags: [service]
 
-- name: "📊 Create Database 'itnsa'"
-  mysql_db:
-    name: itnsa
-    state: present
-    login_unix_socket: /var/run/mysqld/mysqld.sock
-  tags: [mysql]
-
-- name: "📊 Create Database 'roundcube'"
-  mysql_db:
-    name: roundcube
-    state: present
-    login_unix_socket: /var/run/mysqld/mysqld.sock
-  tags: [mysql]
-
-- name: "📊 Create Database 'cacti'"
-  mysql_db:
-    name: cacti
-    state: present
-    login_unix_socket: /var/run/mysqld/mysqld.sock
-  tags: [mysql]
-
-- name: "👤 Create Database User 'itnsa'"
-  mysql_user:
-    name: itnsa
-    password: Skills39!
-    priv: 'itnsa.*:ALL'
-    host: '%'
-    state: present
-    login_unix_socket: /var/run/mysqld/mysqld.sock
-  tags: [mysql]
-
-- name: "👤 Create Database User 'roundcube'"
-  mysql_user:
-    name: roundcube
-    password: Skills39!
-    priv: 'roundcube.*:ALL'
-    host: '172.16.1.%'
-    state: present
-    login_unix_socket: /var/run/mysqld/mysqld.sock
-  tags: [mysql]
-
-- name: "👤 Create Database User 'cacti'"
-  mysql_user:
-    name: cacti
-    password: Skills39!
-    priv: 'cacti.*:ALL'
-    host: '192.168.1.%'
-    state: present
-    login_unix_socket: /var/run/mysqld/mysqld.sock
-  tags: [mysql]
-
-- name: "👤 Allow Root Remote Access from DMZ"
-  mysql_user:
-    name: root
-    password: Skills39!
-    priv: '*.*:ALL,GRANT'
-    host: '172.16.1.%'
-    state: present
-    login_unix_socket: /var/run/mysqld/mysqld.sock
-  tags: [mysql]
-
-- name: "👤 Allow Root Remote Access from INT"
-  mysql_user:
-    name: root
-    password: Skills39!
-    priv: '*.*:ALL,GRANT'
-    host: '192.168.1.%'
-    state: present
-    login_unix_socket: /var/run/mysqld/mysqld.sock
+- name: "📊 Create Databases and Users"
+  shell: |
+    mysql -u root <<EOF
+    -- Create databases
+    CREATE DATABASE IF NOT EXISTS itnsa;
+    CREATE DATABASE IF NOT EXISTS roundcube;
+    CREATE DATABASE IF NOT EXISTS cacti;
+    
+    -- Create users and grant privileges
+    CREATE USER IF NOT EXISTS 'itnsa'@'%' IDENTIFIED BY 'Skills39!';
+    GRANT ALL PRIVILEGES ON itnsa.* TO 'itnsa'@'%';
+    
+    CREATE USER IF NOT EXISTS 'roundcube'@'172.16.1.%' IDENTIFIED BY 'Skills39!';
+    GRANT ALL PRIVILEGES ON roundcube.* TO 'roundcube'@'172.16.1.%';
+    
+    CREATE USER IF NOT EXISTS 'cacti'@'192.168.1.%' IDENTIFIED BY 'Skills39!';
+    GRANT ALL PRIVILEGES ON cacti.* TO 'cacti'@'192.168.1.%';
+    
+    -- Allow root remote access
+    CREATE USER IF NOT EXISTS 'root'@'172.16.1.%' IDENTIFIED BY 'Skills39!';
+    GRANT ALL PRIVILEGES ON *.* TO 'root'@'172.16.1.%' WITH GRANT OPTION;
+    
+    CREATE USER IF NOT EXISTS 'root'@'192.168.1.%' IDENTIFIED BY 'Skills39!';
+    GRANT ALL PRIVILEGES ON *.* TO 'root'@'192.168.1.%' WITH GRANT OPTION;
+    
+    FLUSH PRIVILEGES;
+    EOF
+  args:
+    creates: /var/lib/mysql/itnsa
   tags: [mysql]
 
 - name: "⚙️ Configure MariaDB for Remote Access"
