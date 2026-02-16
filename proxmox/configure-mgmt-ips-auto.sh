@@ -107,22 +107,40 @@ ensure_ssh() {
     local vmid=$1
     local hostname=$2
     
-    echo "Ensuring SSH is installed and running..."
+    echo "Installing and configuring SSH..."
     
-    # Install openssh-server if not present
-    qm guest exec ${vmid} -- /bin/bash -c "dpkg -l | grep -q openssh-server || apt update && apt install -y openssh-server" &>/dev/null
+    # Update package list and install openssh-server
+    echo "  - Updating package list..."
+    qm guest exec ${vmid} -- /bin/bash -c "apt update -qq" 2>&1 | grep -v "^$" || true
     
-    # Enable and start SSH
-    qm guest exec ${vmid} -- /bin/bash -c "systemctl enable ssh && systemctl start ssh" &>/dev/null
+    echo "  - Installing openssh-server..."
+    qm guest exec ${vmid} -- /bin/bash -c "DEBIAN_FRONTEND=noninteractive apt install -y openssh-server" 2>&1 | grep -v "^$" || true
     
-    # Configure SSH to allow root login
-    qm guest exec ${vmid} -- /bin/bash -c "sed -i 's/#PermitRootLogin.*/PermitRootLogin yes/' /etc/ssh/sshd_config" &>/dev/null
-    qm guest exec ${vmid} -- /bin/bash -c "sed -i 's/PermitRootLogin.*/PermitRootLogin yes/' /etc/ssh/sshd_config" &>/dev/null
+    # Enable and start SSH service
+    echo "  - Enabling SSH service..."
+    qm guest exec ${vmid} -- /bin/bash -c "systemctl enable ssh" 2>&1
+    qm guest exec ${vmid} -- /bin/bash -c "systemctl start ssh" 2>&1
     
-    # Restart SSH
-    qm guest exec ${vmid} -- /bin/bash -c "systemctl restart ssh" &>/dev/null
+    # Configure SSH to allow root login with password
+    echo "  - Configuring SSH for root login..."
+    qm guest exec ${vmid} -- /bin/bash -c "sed -i 's/#PermitRootLogin.*/PermitRootLogin yes/' /etc/ssh/sshd_config" 2>&1
+    qm guest exec ${vmid} -- /bin/bash -c "sed -i 's/^PermitRootLogin.*/PermitRootLogin yes/' /etc/ssh/sshd_config" 2>&1
+    qm guest exec ${vmid} -- /bin/bash -c "sed -i 's/#PasswordAuthentication.*/PasswordAuthentication yes/' /etc/ssh/sshd_config" 2>&1
+    qm guest exec ${vmid} -- /bin/bash -c "sed -i 's/^PasswordAuthentication.*/PasswordAuthentication yes/' /etc/ssh/sshd_config" 2>&1
     
-    echo -e "${GREEN}✓ SSH configured${NC}"
+    # Restart SSH to apply changes
+    echo "  - Restarting SSH service..."
+    qm guest exec ${vmid} -- /bin/bash -c "systemctl restart ssh" 2>&1
+    
+    # Verify SSH is running
+    local ssh_status=$(qm guest exec ${vmid} -- /bin/bash -c "systemctl is-active ssh" 2>/dev/null)
+    if [[ "$ssh_status" == *"active"* ]]; then
+        echo -e "${GREEN}  ✓ SSH installed and running${NC}"
+        return 0
+    else
+        echo -e "${YELLOW}  ⚠ SSH status unclear${NC}"
+        return 0
+    fi
 }
 
 # Main execution
@@ -221,12 +239,14 @@ if [ $FAILED -eq 0 ]; then
     echo "     ping 10.0.0.50  # juri-srv"
     echo "     ping 10.0.0.10  # int-srv"
     echo ""
-    echo "  2. SSH to juri-srv:"
+    echo "  2. SSH to juri-srv (SSH already configured!):"
     echo "     ssh root@10.0.0.50"
     echo "     Password: 12345678"
     echo ""
-    echo "  3. Setup SSH keys:"
-    echo "     cd /root/lks-debian-2025"
+    echo "  3. Setup SSH keys from juri-srv:"
+    echo "     cd /root"
+    echo "     git clone https://github.com/Areyoufunn/lks-debian-2025.git"
+    echo "     cd lks-debian-2025"
     echo "     ./setup-juri-ssh-keys.sh"
     echo ""
     echo "  4. Run Ansible:"
