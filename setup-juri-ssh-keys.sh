@@ -104,16 +104,24 @@ for hostname in "${SERVER_LIST[@]}"; do
     echo -e "${BLUE}━━━ Copying key to ${hostname} (${ip}) ━━━${NC}"
     
     # Try to copy SSH key with sshpass
-    if sshpass -p "${PASSWORD}" ssh-copy-id -o ConnectTimeout=10 -o StrictHostKeyChecking=no root@${ip} 2>&1 | grep -q "Number of key(s) added"; then
+    echo "  Attempting to copy SSH key..."
+    
+    # Run ssh-copy-id and capture exit code
+    sshpass -p "${PASSWORD}" ssh-copy-id -o ConnectTimeout=10 -o StrictHostKeyChecking=no root@${ip} &>/dev/null
+    EXIT_CODE=$?
+    
+    if [ $EXIT_CODE -eq 0 ]; then
         echo -e "${GREEN}  ✓ Key copied to ${hostname}${NC}"
         ((SUCCESS++))
     else
-        # Check if key already exists (not an error)
-        if sshpass -p "${PASSWORD}" ssh -o ConnectTimeout=5 -o StrictHostKeyChecking=no root@${ip} "exit" 2>/dev/null; then
-            echo -e "${YELLOW}  ⚠ Key may already exist on ${hostname}${NC}"
+        # Try to verify if we can SSH (key might already exist)
+        echo "  Verifying SSH access..."
+        if sshpass -p "${PASSWORD}" ssh -o ConnectTimeout=5 -o StrictHostKeyChecking=no root@${ip} "exit" &>/dev/null; then
+            echo -e "${YELLOW}  ⚠ SSH works, key may already exist on ${hostname}${NC}"
             ((SUCCESS++))
         else
-            echo -e "${RED}  ✗ Failed to copy key to ${hostname}${NC}"
+            echo -e "${RED}  ✗ Failed to access ${hostname}${NC}"
+            echo -e "${YELLOW}    Check: IP reachable? SSH running? Password correct?${NC}"
             ((FAILED++))
             FAILED_SERVERS+=("${hostname}")
         fi
