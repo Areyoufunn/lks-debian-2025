@@ -67,6 +67,7 @@ echo ""
 echo -e "${CYAN}[3/3] Distributing SSH Key to Servers${NC}"
 echo ""
 echo -e "${YELLOW}Note: You will be prompted for password for each server${NC}"
+echo -e "${YELLOW}      Default password: 12345678${NC}"
 echo ""
 
 # Counter
