@@ -9,7 +9,7 @@
 # - openssh-server must be installed in VMs
 #
 
-set -e
+# Note: Not using 'set -e' to continue even if one VM fails
 
 # Colors
 RED='\033[0;31m'
@@ -61,49 +61,44 @@ configure_mgmt_ip() {
     local mgmt_ip=$3
     local iface=$4
     
-    echo -e "${YELLOW}━━━ Configuring ${hostname} (${mgmt_ip}) ━━━${NC}"
+    echo -e "${YELLOW}━━━ Configuring ${hostname} (${mgmt_ip}) on ${iface} ━━━${NC}"
     
     # Create network config using echo instead of heredoc
     echo "Creating network configuration..."
-    qm guest exec ${vmid} -- /bin/bash -c "echo 'auto ${iface}' > /etc/network/interfaces.d/${iface}" &>/dev/null
-    qm guest exec ${vmid} -- /bin/bash -c "echo 'iface ${iface} inet static' >> /etc/network/interfaces.d/${iface}" &>/dev/null
-    qm guest exec ${vmid} -- /bin/bash -c "echo '    address ${mgmt_ip}' >> /etc/network/interfaces.d/${iface}" &>/dev/null
-    qm guest exec ${vmid} -- /bin/bash -c "echo '    netmask 255.255.255.0' >> /etc/network/interfaces.d/${iface}" &>/dev/null
     
-    if [ $? -eq 0 ]; then
-        echo -e "${GREEN}✓ Config file created${NC}"
-    else
-        echo -e "${RED}✗ Failed to create config${NC}"
+    if ! qm guest exec ${vmid} -- /bin/bash -c "echo 'auto ${iface}' > /etc/network/interfaces.d/${iface}" 2>&1; then
+        echo -e "${RED}✗ Failed to create config file${NC}"
         return 1
     fi
     
+    qm guest exec ${vmid} -- /bin/bash -c "echo 'iface ${iface} inet static' >> /etc/network/interfaces.d/${iface}" 2>&1
+    qm guest exec ${vmid} -- /bin/bash -c "echo '    address ${mgmt_ip}' >> /etc/network/interfaces.d/${iface}" 2>&1
+    qm guest exec ${vmid} -- /bin/bash -c "echo '    netmask 255.255.255.0' >> /etc/network/interfaces.d/${iface}" 2>&1
+    
+    echo -e "${GREEN}✓ Config file created${NC}"
+    
     # Apply IP immediately
     echo "Applying IP configuration..."
-    qm guest exec ${vmid} -- /bin/bash -c "ip addr add ${mgmt_ip}/24 dev ${iface} 2>/dev/null || true" &>/dev/null
-    qm guest exec ${vmid} -- /bin/bash -c "ip link set ${iface} up" &>/dev/null
+    qm guest exec ${vmid} -- /bin/bash -c "ip addr add ${mgmt_ip}/24 dev ${iface} 2>/dev/null || true" 2>&1
+    qm guest exec ${vmid} -- /bin/bash -c "ip link set ${iface} up" 2>&1
     
     # Bring up interface persistently
-    qm guest exec ${vmid} -- /bin/bash -c "ifup ${iface} 2>/dev/null || true" &>/dev/null
+    echo "Bringing up interface..."
+    qm guest exec ${vmid} -- /bin/bash -c "ifup ${iface} 2>/dev/null || true" 2>&1
     
     # Verify
     echo "Verifying configuration..."
-    sleep 1  # Give it a moment
-    local result=$(qm guest exec ${vmid} -- /bin/bash -c "ip addr show ${iface} | grep '${mgmt_ip}'" 2>/dev/null)
+    sleep 2  # Give it more time
     
-    if [ -n "$result" ]; then
-        echo -e "${GREEN}✓ ${hostname} configured successfully (${mgmt_ip})${NC}"
+    # Try ping test first (more reliable)
+    if ping -c 2 -W 3 ${mgmt_ip} &>/dev/null; then
+        echo -e "${GREEN}✓ ${hostname} is reachable at ${mgmt_ip}${NC}"
         return 0
     else
-        echo -e "${YELLOW}⚠ Configuration applied but verification unclear${NC}"
-        echo -e "${YELLOW}  Trying to verify manually...${NC}"
-        # Try ping test
-        if ping -c 1 -W 2 ${mgmt_ip} &>/dev/null; then
-            echo -e "${GREEN}✓ ${hostname} is reachable at ${mgmt_ip}${NC}"
-            return 0
-        else
-            echo -e "${RED}✗ ${hostname} not reachable${NC}"
-            return 1
-        fi
+        echo -e "${YELLOW}⚠ ${hostname} not reachable via ping, checking interface...${NC}"
+        local result=$(qm guest exec ${vmid} -- /bin/bash -c "ip addr show ${iface} 2>/dev/null" 2>&1)
+        echo "Interface status: $result"
+        return 1
     fi
 }
 
