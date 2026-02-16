@@ -46,36 +46,21 @@
     state: started
   tags: [service]
 
-- name: "️ Remove Anonymous Users"
-  mysql_user:
-    name: ''
-    host_all: yes
-    state: absent
-    login_unix_socket: /var/run/mysqld/mysqld.sock
-  tags: [mysql]
-
-- name: "🗑️ Remove Test Database"
-  mysql_db:
-    name: test
-    state: absent
-    login_unix_socket: /var/run/mysqld/mysqld.sock
-  tags: [mysql]
-
-- name: "� Create Database 'itnsa'"
+- name: "📊 Create Database 'itnsa'"
   mysql_db:
     name: itnsa
     state: present
     login_unix_socket: /var/run/mysqld/mysqld.sock
   tags: [mysql]
 
-- name: "� Create Database 'roundcube'"
+- name: "📊 Create Database 'roundcube'"
   mysql_db:
     name: roundcube
     state: present
     login_unix_socket: /var/run/mysqld/mysqld.sock
   tags: [mysql]
 
-- name: "� Create Database 'cacti'"
+- name: "📊 Create Database 'cacti'"
   mysql_db:
     name: cacti
     state: present
