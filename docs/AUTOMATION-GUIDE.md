@@ -17,6 +17,22 @@ ansible-playbook site.yml
 ansible-playbook validate-manual.yml
 ```
 
+> [!WARNING]
+> **Jika password masih `skills39` bukan `12345678`:**
+> 
+> Run script reset password dari **Proxmox host**:
+> ```bash
+> cd /root/lks-debian-2025/proxmox
+> chmod +x reset-passwords.sh
+> ./reset-passwords.sh
+> ```
+> 
+> Kemudian re-run SSH key distribution dari juri-srv:
+> ```bash
+> cd /root/lks-debian-2025
+> ./setup-juri-ssh-keys.sh
+> ```
+
 ---
 
 ## Detailed Steps
