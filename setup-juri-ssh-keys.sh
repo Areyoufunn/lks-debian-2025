@@ -86,68 +86,47 @@ echo ""
 PASSWORD="12345678"
 
 # Counter
+count=0
 SUCCESS=0
 FAILED=0
-FAILED_SERVERS=()
 
-# Server list in order
-SERVER_LIST=("fw-srv" "int-srv" "mail-srv" "web-01" "web-02" "db-srv" "mon-srv" "ani-clt")
-TOTAL=${#SERVER_LIST[@]}
-
-echo "Distributing keys to ${TOTAL} servers..."
+echo "Starting distribution to 8 servers..."
 echo ""
 
-# Simple loop through servers
-for hostname in "${SERVER_LIST[@]}"; do
+# Simple loop - exact same as debug version
+for hostname in fw-srv int-srv mail-srv web-01 web-02 db-srv mon-srv ani-clt; do
+    count=$((count + 1))
     ip="${SERVERS[$hostname]}"
     
-    echo -e "${BLUE}━━━ Copying key to ${hostname} (${ip}) ━━━${NC}"
+    echo "[$count/8] Processing ${hostname} (${ip})..."
     
-    # Try to copy SSH key with sshpass
-    echo "  Attempting to copy SSH key..."
+    # Just try to copy the key directly
+    sshpass -p "${PASSWORD}" ssh-copy-id -o ConnectTimeout=5 -o StrictHostKeyChecking=no root@${ip}
     
-    # Run ssh-copy-id and capture exit code
-    sshpass -p "${PASSWORD}" ssh-copy-id -o ConnectTimeout=10 -o StrictHostKeyChecking=no root@${ip} &>/dev/null
-    EXIT_CODE=$?
-    
-    if [ $EXIT_CODE -eq 0 ]; then
-        echo -e "${GREEN}  ✓ Key copied to ${hostname}${NC}"
-        ((SUCCESS++))
+    if [ $? -eq 0 ]; then
+        echo -e "${GREEN}  SUCCESS: ${hostname}${NC}"
+        SUCCESS=$((SUCCESS + 1))
     else
-        # Try to verify if we can SSH (key might already exist)
-        echo "  Verifying SSH access..."
-        if sshpass -p "${PASSWORD}" ssh -o ConnectTimeout=5 -o StrictHostKeyChecking=no root@${ip} "exit" &>/dev/null; then
-            echo -e "${YELLOW}  ⚠ SSH works, key may already exist on ${hostname}${NC}"
-            ((SUCCESS++))
-        else
-            echo -e "${RED}  ✗ Failed to access ${hostname}${NC}"
-            echo -e "${YELLOW}    Check: IP reachable? SSH running? Password correct?${NC}"
-            ((FAILED++))
-            FAILED_SERVERS+=("${hostname}")
-        fi
+        echo -e "${RED}  FAILED: ${hostname}${NC}"
+        FAILED=$((FAILED + 1))
     fi
     
-    echo -e "${CYAN}  Progress: $((SUCCESS + FAILED)) / ${TOTAL}${NC}"
     echo ""
+    sleep 1
 done
 
+echo "Distribution complete!"
+echo "Processed ${count} servers"
+echo ""
 
 echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo -e "${BLUE}  📊 Distribution Summary${NC}"
 echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo ""
-echo -e "Total Servers: ${CYAN}${#SERVERS[@]}${NC}"
+echo -e "Total Servers: ${CYAN}8${NC}"
 echo -e "Success:       ${GREEN}${SUCCESS}${NC}"
 echo -e "Failed:        ${RED}${FAILED}${NC}"
 echo ""
-
-if [ ${#FAILED_SERVERS[@]} -gt 0 ]; then
-    echo -e "${YELLOW}Failed servers:${NC}"
-    for server in "${FAILED_SERVERS[@]}"; do
-        echo "  - ${server} (${SERVERS[$server]})"
-    done
-    echo ""
-fi
 
 if [ $FAILED -eq 0 ]; then
     echo -e "${GREEN}✓ All SSH keys distributed successfully!${NC}"
