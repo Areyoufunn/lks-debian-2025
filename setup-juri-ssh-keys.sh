@@ -25,16 +25,16 @@ if [ "$EUID" -ne 0 ]; then
     exit 1
 fi
 
-# Define servers
+# Define servers with MGMT IPs
 declare -A SERVERS=(
-    ["fw-srv"]="192.168.27.200"
-    ["int-srv"]="192.168.1.10"
-    ["mail-srv"]="172.16.1.10"
-    ["web-01"]="172.16.1.21"
-    ["web-02"]="172.16.1.22"
-    ["db-srv"]="172.16.1.30"
-    ["mon-srv"]="172.16.1.40"
-    ["ani-clt"]="192.168.27.100"
+    ["fw-srv"]="10.0.0.254"
+    ["int-srv"]="10.0.0.10"
+    ["mail-srv"]="10.0.0.20"
+    ["web-01"]="10.0.0.21"
+    ["web-02"]="10.0.0.22"
+    ["db-srv"]="10.0.0.30"
+    ["mon-srv"]="10.0.0.40"
+    ["ani-clt"]="10.0.0.100"
 )
 
 echo -e "${CYAN}[1/3] Generating SSH Key...${NC}"
@@ -43,14 +43,7 @@ echo ""
 # Check if SSH key already exists
 if [ -f ~/.ssh/id_rsa ]; then
     echo -e "${YELLOW}⚠ SSH key already exists at ~/.ssh/id_rsa${NC}"
-    read -p "Do you want to overwrite it? (yes/no): " overwrite
-    if [ "$overwrite" != "yes" ]; then
-        echo "Using existing key..."
-    else
-        echo "Generating new key..."
-        ssh-keygen -t rsa -b 4096 -f ~/.ssh/id_rsa -N "" -C "juri-srv@lksn2025"
-        echo -e "${GREEN}✓ New SSH key generated${NC}"
-    fi
+    echo "Using existing key..."
 else
     echo "Generating SSH key..."
     ssh-keygen -t rsa -b 4096 -f ~/.ssh/id_rsa -N "" -C "juri-srv@lksn2025"
@@ -66,8 +59,8 @@ echo ""
 
 echo -e "${CYAN}[3/3] Distributing SSH Key to Servers${NC}"
 echo ""
-echo -e "${YELLOW}Note: You will be prompted for password for each server${NC}"
-echo -e "${YELLOW}      Default password: 12345678${NC}"
+echo -e "${YELLOW}Note: Connecting via MGMT network (10.0.0.x)${NC}"
+echo -e "${YELLOW}      Password: 12345678${NC}"
 echo ""
 
 # Counter
@@ -108,9 +101,9 @@ if [ $FAILED -eq 0 ]; then
     echo -e "${GREEN}✓ All SSH keys distributed successfully!${NC}"
     echo ""
     echo -e "${CYAN}Next Steps:${NC}"
-    echo "  1. Test SSH connection:"
-    echo "     ssh root@fw-srv"
-    echo "     ssh root@int-srv"
+    echo "  1. Test SSH connection (via MGMT network):"
+    echo "     ssh root@10.0.0.254  # fw-srv"
+    echo "     ssh root@10.0.0.10   # int-srv"
     echo ""
     echo "  2. Run Ansible validation:"
     echo "     cd /root/lks-debian-2025/ansible"
