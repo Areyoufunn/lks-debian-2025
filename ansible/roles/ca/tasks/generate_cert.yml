@@ -16,10 +16,13 @@
     creates: /etc/ssl/lksn-ca/certs/{{ cert.name }}.csr
 
 - name: "✍️ Sign Certificate for {{ cert.name }}"
-  shell: >
-    echo "y" | openssl ca -config /etc/ssl/lksn-ca/openssl.cnf
-    -extensions {{ cert.ext | default('server_cert') }} -days {{ cert.days }} -notext -md sha256
+  command: >
+    openssl x509 -req -days {{ cert.days }}
     -in /etc/ssl/lksn-ca/certs/{{ cert.name }}.csr
+    -CA /etc/ssl/lksn-ca/certs/ca.crt
+    -CAkey /etc/ssl/lksn-ca/private/ca.key
+    -CAcreateserial
     -out /etc/ssl/lksn-ca/certs/{{ cert.name }}.crt
+    -sha256
   args:
     creates: /etc/ssl/lksn-ca/certs/{{ cert.name }}.crt

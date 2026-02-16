@@ -117,6 +117,12 @@
   notify: restart apache2
   tags: [apache]
 
+- name: "⏳ Wait for SSL Certificate to be Generated"
+  wait_for:
+    path: /etc/ssl/lksn-ca/certs/phpmyadmin.crt
+    timeout: 60
+  tags: [ssl]
+
 - name: "🔗 Enable phpMyAdmin Site"
   command: a2ensite phpmyadmin-ssl
   args:
