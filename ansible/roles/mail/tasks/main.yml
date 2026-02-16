@@ -23,6 +23,11 @@
   when: explain_mode | default(false)
   tags: [explain]
 
+- name: "⏳ Wait for APT Lock"
+  shell: while fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1; do sleep 1; done
+  changed_when: false
+  tags: [packages]
+
 - name: "📦 Install Mail Packages"
   apt:
     name:
