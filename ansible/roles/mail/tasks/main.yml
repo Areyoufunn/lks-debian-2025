@@ -101,6 +101,36 @@
   notify: restart apache2
   tags: [apache]
 
+- name: "📥 Fetch Mail Certificate from CA Server"
+  fetch:
+    src: /etc/ssl/lksn-ca/certs/mail-srv.crt
+    dest: /tmp/mail.crt
+    flat: yes
+  delegate_to: "{{ groups['internal'][0] }}"
+  tags: [ssl]
+
+- name: "📥 Fetch Mail Private Key from CA Server"
+  fetch:
+    src: /etc/ssl/lksn-ca/private/mail-srv.key
+    dest: /tmp/mail.key
+    flat: yes
+  delegate_to: "{{ groups['internal'][0] }}"
+  tags: [ssl]
+
+- name: "📤 Install Mail Certificate"
+  copy:
+    src: /tmp/mail.crt
+    dest: /etc/ssl/certs/mail.crt
+    mode: '0644'
+  tags: [ssl]
+
+- name: "📤 Install Mail Private Key"
+  copy:
+    src: /tmp/mail.key
+    dest: /etc/ssl/private/mail.key
+    mode: '0600'
+  tags: [ssl]
+
 - name: "⚙️ Configure Roundcube VirtualHost"
   template:
     src: roundcube-vhost.conf.j2

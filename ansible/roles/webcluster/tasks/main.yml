@@ -89,6 +89,36 @@
     mode: '0755'
   tags: [nginx]
 
+- name: "📥 Fetch Web Certificate from CA Server"
+  fetch:
+    src: /etc/ssl/lksn-ca/certs/web.crt
+    dest: /tmp/www.crt
+    flat: yes
+  delegate_to: "{{ groups['internal'][0] }}"
+  tags: [ssl]
+
+- name: "📥 Fetch Web Private Key from CA Server"
+  fetch:
+    src: /etc/ssl/lksn-ca/private/web.key
+    dest: /tmp/www.key
+    flat: yes
+  delegate_to: "{{ groups['internal'][0] }}"
+  tags: [ssl]
+
+- name: "📤 Install Web Certificate"
+  copy:
+    src: /tmp/www.crt
+    dest: /etc/ssl/certs/www.crt
+    mode: '0644'
+  tags: [ssl]
+
+- name: "📤 Install Web Private Key"
+  copy:
+    src: /tmp/www.key
+    dest: /etc/ssl/private/www.key
+    mode: '0600'
+  tags: [ssl]
+
 - name: "🔑 Create htpasswd"
   command: htpasswd -bc /etc/nginx/.htpasswd rahasia Skills39
   args:
