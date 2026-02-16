@@ -46,53 +46,40 @@
     state: started
   tags: [service]
 
-- name: "🔐 Set Root Password"
-  mysql_user:
-    name: root
-    password: Skills39!
-    login_unix_socket: /var/run/mysqld/mysqld.sock
-    state: present
-  tags: [mysql]
-
-- name: "🗑️ Remove Anonymous Users"
+- name: "️ Remove Anonymous Users"
   mysql_user:
     name: ''
     host_all: yes
     state: absent
-    login_user: root
-    login_password: Skills39!
+    login_unix_socket: /var/run/mysqld/mysqld.sock
   tags: [mysql]
 
 - name: "🗑️ Remove Test Database"
   mysql_db:
     name: test
     state: absent
-    login_user: root
-    login_password: Skills39!
+    login_unix_socket: /var/run/mysqld/mysqld.sock
   tags: [mysql]
 
-- name: "💾 Create Database 'itnsa'"
+- name: "� Create Database 'itnsa'"
   mysql_db:
     name: itnsa
     state: present
-    login_user: root
-    login_password: Skills39!
+    login_unix_socket: /var/run/mysqld/mysqld.sock
   tags: [mysql]
 
-- name: "💾 Create Database 'roundcube'"
+- name: "� Create Database 'roundcube'"
   mysql_db:
     name: roundcube
     state: present
-    login_user: root
-    login_password: Skills39!
+    login_unix_socket: /var/run/mysqld/mysqld.sock
   tags: [mysql]
 
-- name: "💾 Create Database 'cacti'"
+- name: "� Create Database 'cacti'"
   mysql_db:
     name: cacti
     state: present
-    login_user: root
-    login_password: Skills39!
+    login_unix_socket: /var/run/mysqld/mysqld.sock
   tags: [mysql]
 
 - name: "👤 Create Database User 'itnsa'"
@@ -102,8 +89,7 @@
     priv: 'itnsa.*:ALL'
     host: '%'
     state: present
-    login_user: root
-    login_password: Skills39!
+    login_unix_socket: /var/run/mysqld/mysqld.sock
   tags: [mysql]
 
 - name: "👤 Create Database User 'roundcube'"
@@ -113,8 +99,7 @@
     priv: 'roundcube.*:ALL'
     host: '172.16.1.%'
     state: present
-    login_user: root
-    login_password: Skills39!
+    login_unix_socket: /var/run/mysqld/mysqld.sock
   tags: [mysql]
 
 - name: "👤 Create Database User 'cacti'"
@@ -122,10 +107,9 @@
     name: cacti
     password: Skills39!
     priv: 'cacti.*:ALL'
-    host: '172.16.1.%'
+    host: '192.168.1.%'
     state: present
-    login_user: root
-    login_password: Skills39!
+    login_unix_socket: /var/run/mysqld/mysqld.sock
   tags: [mysql]
 
 - name: "👤 Allow Root Remote Access from DMZ"
@@ -135,8 +119,7 @@
     priv: '*.*:ALL,GRANT'
     host: '172.16.1.%'
     state: present
-    login_user: root
-    login_password: Skills39!
+    login_unix_socket: /var/run/mysqld/mysqld.sock
   tags: [mysql]
 
 - name: "👤 Allow Root Remote Access from INT"
@@ -146,8 +129,7 @@
     priv: '*.*:ALL,GRANT'
     host: '192.168.1.%'
     state: present
-    login_user: root
-    login_password: Skills39!
+    login_unix_socket: /var/run/mysqld/mysqld.sock
   tags: [mysql]
 
 - name: "⚙️ Configure MariaDB for Remote Access"
