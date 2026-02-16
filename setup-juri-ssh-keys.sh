@@ -66,24 +66,53 @@ echo ""
 # Counter
 SUCCESS=0
 FAILED=0
+FAILED_SERVERS=()
 
-# Distribute to each server
-for hostname in "${!SERVERS[@]}"; do
+# Distribute to each server in specific order
+ORDERED_SERVERS=("fw-srv" "int-srv" "mail-srv" "web-01" "web-02" "db-srv" "mon-srv" "ani-clt")
+
+for hostname in "${ORDERED_SERVERS[@]}"; do
     ip="${SERVERS[$hostname]}"
+    
     echo -e "${BLUE}━━━ Copying key to ${hostname} (${ip}) ━━━${NC}"
     
+    # Test connectivity first
+    echo "  Testing connectivity..."
+    if ! ping -c 1 -W 2 ${ip} &>/dev/null; then
+        echo -e "${RED}  ✗ Cannot reach ${hostname} at ${ip}${NC}"
+        echo -e "${YELLOW}    Please check MGMT IP is configured${NC}"
+        ((FAILED++))
+        FAILED_SERVERS+=("${hostname}")
+        echo ""
+        continue
+    fi
+    echo -e "${GREEN}  ✓ ${hostname} is reachable${NC}"
+    
+    # Test SSH port
+    echo "  Testing SSH port..."
+    if ! timeout 3 bash -c "echo > /dev/tcp/${ip}/22" 2>/dev/null; then
+        echo -e "${RED}  ✗ SSH port not open on ${hostname}${NC}"
+        echo -e "${YELLOW}    Please ensure SSH is installed and running${NC}"
+        ((FAILED++))
+        FAILED_SERVERS+=("${hostname}")
+        echo ""
+        continue
+    fi
+    echo -e "${GREEN}  ✓ SSH port is open${NC}"
+    
     # Try to copy SSH key
-    if ssh-copy-id -o ConnectTimeout=5 root@${ip} 2>/dev/null; then
-        echo -e "${GREEN}✓ Key copied to ${hostname}${NC}"
+    echo "  Copying SSH key..."
+    if ssh-copy-id -o ConnectTimeout=5 -o StrictHostKeyChecking=no root@${ip} 2>/dev/null; then
+        echo -e "${GREEN}  ✓ Key copied to ${hostname}${NC}"
         ((SUCCESS++))
     else
-        echo -e "${RED}✗ Failed to copy key to ${hostname}${NC}"
-        echo -e "${YELLOW}  Possible reasons:${NC}"
-        echo "    - Server not reachable (check IP: ${ip})"
-        echo "    - SSH service not running"
-        echo "    - Wrong password"
-        echo "    - Firewall blocking connection"
+        echo -e "${RED}  ✗ Failed to copy key to ${hostname}${NC}"
+        echo -e "${YELLOW}    Possible reasons:${NC}"
+        echo "      - Wrong password (expected: 12345678)"
+        echo "      - SSH key already exists"
+        echo "      - Permission denied"
         ((FAILED++))
+        FAILED_SERVERS+=("${hostname}")
     fi
     echo ""
 done
@@ -96,6 +125,14 @@ echo -e "Total Servers: ${CYAN}${#SERVERS[@]}${NC}"
 echo -e "Success:       ${GREEN}${SUCCESS}${NC}"
 echo -e "Failed:        ${RED}${FAILED}${NC}"
 echo ""
+
+if [ ${#FAILED_SERVERS[@]} -gt 0 ]; then
+    echo -e "${YELLOW}Failed servers:${NC}"
+    for server in "${FAILED_SERVERS[@]}"; do
+        echo "  - ${server} (${SERVERS[$server]})"
+    done
+    echo ""
+fi
 
 if [ $FAILED -eq 0 ]; then
     echo -e "${GREEN}✓ All SSH keys distributed successfully!${NC}"
