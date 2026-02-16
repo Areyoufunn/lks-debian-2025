@@ -69,6 +69,11 @@ clone_vm() {
     
     # Configure cloud-init for basic setup only
     # Note: MGMT IP must be configured manually (see MGMT-IP-MANUAL-CONFIG.md)
+    
+    # Remove existing cloud-init disk if present (from previous clone)
+    qm set ${vmid} --delete ide2 2>/dev/null || true
+    
+    # Add cloud-init disk
     qm set ${vmid} --ide2 ${STORAGE}:cloudinit
     qm set ${vmid} --ciuser root
     qm set ${vmid} --cipassword 12345678
