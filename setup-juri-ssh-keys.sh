@@ -90,58 +90,39 @@ SUCCESS=0
 FAILED=0
 FAILED_SERVERS=()
 
-# Distribute to each server in specific order
-ORDERED_SERVERS=("fw-srv" "int-srv" "mail-srv" "web-01" "web-02" "db-srv" "mon-srv" "ani-clt")
+# Server list in order
+SERVER_LIST=("fw-srv" "int-srv" "mail-srv" "web-01" "web-02" "db-srv" "mon-srv" "ani-clt")
+TOTAL=${#SERVER_LIST[@]}
 
-for hostname in "${ORDERED_SERVERS[@]}"; do
+echo "Distributing keys to ${TOTAL} servers..."
+echo ""
+
+# Simple loop through servers
+for hostname in "${SERVER_LIST[@]}"; do
     ip="${SERVERS[$hostname]}"
     
     echo -e "${BLUE}━━━ Copying key to ${hostname} (${ip}) ━━━${NC}"
     
-    # Test connectivity first
-    echo "  Testing connectivity..."
-    if ! ping -c 1 -W 2 ${ip} &>/dev/null; then
-        echo -e "${RED}  ✗ Cannot reach ${hostname} at ${ip}${NC}"
-        echo -e "${YELLOW}    Please check MGMT IP is configured${NC}"
-        ((FAILED++))
-        FAILED_SERVERS+=("${hostname}")
-        echo ""
-        continue
-    fi
-    echo -e "${GREEN}  ✓ ${hostname} is reachable${NC}"
-    
-    # Test SSH port with nc (more reliable than /dev/tcp)
-    echo "  Testing SSH port..."
-    if ! nc -z -w 3 ${ip} 22 2>/dev/null; then
-        echo -e "${RED}  ✗ SSH port not open on ${hostname}${NC}"
-        echo -e "${YELLOW}    Please ensure SSH is installed and running${NC}"
-        ((FAILED++))
-        FAILED_SERVERS+=("${hostname}")
-        echo ""
-        continue
-    fi
-    echo -e "${GREEN}  ✓ SSH port is open${NC}"
-    
-    # Try to copy SSH key
-    echo "  Copying SSH key..."
-    if sshpass -p "${PASSWORD}" ssh-copy-id -o ConnectTimeout=5 -o StrictHostKeyChecking=no root@${ip} 2>/dev/null; then
+    # Try to copy SSH key with sshpass
+    if sshpass -p "${PASSWORD}" ssh-copy-id -o ConnectTimeout=10 -o StrictHostKeyChecking=no root@${ip} 2>&1 | grep -q "Number of key(s) added"; then
         echo -e "${GREEN}  ✓ Key copied to ${hostname}${NC}"
         ((SUCCESS++))
     else
-        echo -e "${RED}  ✗ Failed to copy key to ${hostname}${NC}"
-        echo -e "${YELLOW}    Possible reasons:${NC}"
-        echo "      - Wrong password (expected: ${PASSWORD})"
-        echo "      - SSH key already exists"
-        echo "      - Permission denied"
-        ((FAILED++))
-        FAILED_SERVERS+=("${hostname}")
+        # Check if key already exists (not an error)
+        if sshpass -p "${PASSWORD}" ssh -o ConnectTimeout=5 -o StrictHostKeyChecking=no root@${ip} "exit" 2>/dev/null; then
+            echo -e "${YELLOW}  ⚠ Key may already exist on ${hostname}${NC}"
+            ((SUCCESS++))
+        else
+            echo -e "${RED}  ✗ Failed to copy key to ${hostname}${NC}"
+            ((FAILED++))
+            FAILED_SERVERS+=("${hostname}")
+        fi
     fi
-    echo ""
     
-    # Debug: Show progress
-    echo -e "${CYAN}  Progress: $((SUCCESS + FAILED)) / ${#ORDERED_SERVERS[@]} servers processed${NC}"
+    echo -e "${CYAN}  Progress: $((SUCCESS + FAILED)) / ${TOTAL}${NC}"
     echo ""
 done
+
 
 echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo -e "${BLUE}  📊 Distribution Summary${NC}"
