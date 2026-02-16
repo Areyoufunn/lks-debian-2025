@@ -73,6 +73,9 @@ clone_vm() {
     qm set ${vmid} --ciuser root
     qm set ${vmid} --cipassword 12345678
     
+    # Enable qemu-guest-agent for automated IP configuration
+    qm set ${vmid} --agent enabled=1
+    
     echo -e "${GREEN}✓ VM ${vmid} (${name}) cloned${NC}"
     echo -e "${YELLOW}  ⚠ MGMT IP ${mgmt_ip} must be configured manually${NC}"
     echo ""
