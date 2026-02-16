@@ -30,6 +30,7 @@
     name:
       - slapd
       - ldap-utils
+      - debconf-utils
     state: present
     update_cache: yes
   environment:
