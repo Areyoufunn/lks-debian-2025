@@ -51,17 +51,33 @@ else
 fi
 
 echo ""
-echo -e "${CYAN}[2/3] Displaying Public Key${NC}"
+echo -e "${CYAN}[2/4] Installing sshpass (for automated password input)...${NC}"
+echo ""
+
+if ! command -v sshpass &> /dev/null; then
+    echo "Installing sshpass..."
+    apt update -qq
+    apt install -y sshpass
+    echo -e "${GREEN}✓ sshpass installed${NC}"
+else
+    echo -e "${GREEN}✓ sshpass already installed${NC}"
+fi
+
+echo ""
+echo -e "${CYAN}[3/4] Displaying Public Key${NC}"
 echo ""
 echo -e "${YELLOW}Public Key:${NC}"
 cat ~/.ssh/id_rsa.pub
 echo ""
 
-echo -e "${CYAN}[3/3] Distributing SSH Key to Servers${NC}"
+echo ""
+echo -e "${CYAN}[4/4] Distributing SSH Key to Servers${NC}"
 echo ""
 echo -e "${YELLOW}Note: Connecting via MGMT network (10.0.0.x)${NC}"
 echo -e "${YELLOW}      Password: 12345678${NC}"
 echo ""
+
+PASSWORD="12345678"
 
 # Counter
 SUCCESS=0
@@ -102,13 +118,13 @@ for hostname in "${ORDERED_SERVERS[@]}"; do
     
     # Try to copy SSH key
     echo "  Copying SSH key..."
-    if ssh-copy-id -o ConnectTimeout=5 -o StrictHostKeyChecking=no root@${ip} 2>/dev/null; then
+    if sshpass -p "${PASSWORD}" ssh-copy-id -o ConnectTimeout=5 -o StrictHostKeyChecking=no root@${ip} 2>/dev/null; then
         echo -e "${GREEN}  ✓ Key copied to ${hostname}${NC}"
         ((SUCCESS++))
     else
         echo -e "${RED}  ✗ Failed to copy key to ${hostname}${NC}"
         echo -e "${YELLOW}    Possible reasons:${NC}"
-        echo "      - Wrong password (expected: 12345678)"
+        echo "      - Wrong password (expected: ${PASSWORD})"
         echo "      - SSH key already exists"
         echo "      - Permission denied"
         ((FAILED++))
