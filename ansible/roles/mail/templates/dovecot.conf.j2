@@ -3,7 +3,7 @@
 # Compatible with Dovecot 2.4.1+
 
 # REQUIRED: Config version MUST be first (breaking change from 2.3)
-dovecot_config_version = 2.4
+dovecot_config_version = 2.4.1
 dovecot_storage_version = 2.4
 
 !include_try /usr/share/dovecot/protocols.d/*.protocol
@@ -16,7 +16,9 @@ listen = *
 ssl = yes
 ssl_server_cert_file = /etc/ssl/lksn-ca/certs/mail-srv.crt
 ssl_server_key_file  = /etc/ssl/lksn-ca/private/mail-srv.key
-ssl_ca_file          = /etc/ssl/lksn-ca/certs/ca.crt
+# ssl_client_ca_file = /etc/ssl/lksn-ca/certs/ca.crt
+# NOTE: ssl_ca_file does not exist in Dovecot 2.4 — use ssl_client_ca_file only
+# if server needs to verify CLIENT certificates (mutual TLS). Not needed for basic IMAP SSL.
 
 # Authentication
 auth_mechanisms = plain login
