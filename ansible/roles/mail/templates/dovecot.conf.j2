@@ -26,28 +26,14 @@ auth_mechanisms = plain login
 auth_allow_cleartext = no
 
 # LDAP authentication
-# NOTE: Dovecot 2.4 uses ldap_uris (not ldap_url or hosts)
-# auth_bind=yes uses LDAP bind for auth (most reliable with OpenLDAP)
+# NOTE: Dovecot 2.4 does NOT support inline settings in passdb/userdb ldap blocks.
+# All LDAP settings must be in an external file referenced via !include.
 passdb ldap {
-  ldap_uris = ldap://192.168.1.10
-  dn = cn=admin,dc=lksn2025,dc=id
-  dnpass = Skills39!
-  ldap_version = 3
-  base = ou=People,dc=lksn2025,dc=id
-  scope = subtree
-  auth_bind = yes
-  auth_bind_userdn = uid=%{user},ou=People,dc=lksn2025,dc=id
+  !include /etc/dovecot/dovecot-ldap.conf
 }
 
 userdb ldap {
-  ldap_uris = ldap://192.168.1.10
-  dn = cn=admin,dc=lksn2025,dc=id
-  dnpass = Skills39!
-  ldap_version = 3
-  base = ou=People,dc=lksn2025,dc=id
-  scope = subtree
-  user_filter = (&(objectClass=posixAccount)(uid=%{user}))
-  user_attrs = homeDirectory=home,uidNumber=uid,gidNumber=gid
+  !include /etc/dovecot/dovecot-ldap.conf
 }
 
 # Mail location
