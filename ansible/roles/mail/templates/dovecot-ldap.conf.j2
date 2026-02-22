@@ -4,25 +4,21 @@
 # Included via !include in /etc/dovecot/conf.d/auth-ldap.conf.ext
 #
 # LDAP Server: int-srv (192.168.1.10)
+#
+# ALL settings in Dovecot 2.4 use ldap_ prefix where they didn't before:
+#   hosts   -> ldap_uris
+#   dn      -> ldap_auth_dn
+#   dnpass  -> ldap_auth_dn_password
+#   base    -> ldap_base
+#   scope   -> ldap_scope
 
-# Dovecot 2.4: use ldap_uris (renamed from old 'hosts')
-ldap_uris = ldap://192.168.1.10
-
-# Dovecot 2.4: 'dn' renamed to 'ldap_auth_dn'
-#              'dnpass' renamed to 'ldap_auth_dn_password'
-ldap_auth_dn = cn=admin,dc=lksn2025,dc=id
+ldap_uris             = ldap://192.168.1.10
+ldap_auth_dn          = cn=admin,dc=lksn2025,dc=id
 ldap_auth_dn_password = Skills39!
-
-ldap_version = 3
-
-# Search base and scope
-base = ou=People,dc=lksn2025,dc=id
-scope = subtree
-
-# Authentication via direct LDAP bind as the user (no password attr needed)
-auth_bind = yes
-auth_bind_userdn = uid=%{user},ou=People,dc=lksn2025,dc=id
-
-# User attribute mapping (for userdb lookups)
-user_filter = (&(objectClass=posixAccount)(uid=%{user}))
-user_attrs = homeDirectory=home,uidNumber=uid,gidNumber=gid
+ldap_version          = 3
+ldap_base             = ou=People,dc=lksn2025,dc=id
+ldap_scope            = subtree
+ldap_auth_bind        = yes
+ldap_auth_bind_userdn = uid=%{user},ou=People,dc=lksn2025,dc=id
+ldap_user_filter      = (&(objectClass=posixAccount)(uid=%{user}))
+ldap_user_attrs       = homeDirectory=home,uidNumber=uid,gidNumber=gid
