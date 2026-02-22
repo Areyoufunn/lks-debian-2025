@@ -126,7 +126,7 @@
 
 - name: "📥 Fetch Mail Certificate from CA Server (int-srv)"
   fetch:
-    src: /root/ca/certs/mail.crt
+    src: /etc/ssl/lksn-ca/certs/mail-srv.crt
     dest: /tmp/ansible-mail.crt
     flat: yes
   delegate_to: "{{ groups['internal'][0] }}"
@@ -134,7 +134,7 @@
 
 - name: "📥 Fetch Mail Private Key from CA Server (int-srv)"
   fetch:
-    src: /root/ca/private/mail.key
+    src: /etc/ssl/lksn-ca/private/mail-srv.key
     dest: /tmp/ansible-mail.key
     flat: yes
   delegate_to: "{{ groups['internal'][0] }}"
@@ -142,7 +142,7 @@
 
 - name: "📥 Fetch CA Certificate from CA Server (int-srv)"
   fetch:
-    src: /root/ca/certs/ca.crt
+    src: /etc/ssl/lksn-ca/certs/ca.crt
     dest: /tmp/ansible-ca.crt
     flat: yes
   delegate_to: "{{ groups['internal'][0] }}"
