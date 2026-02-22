@@ -18,7 +18,7 @@ ldap_auth_dn_password = Skills39!
 ldap_version          = 3
 ldap_base             = ou=People,dc=lksn2025,dc=id
 ldap_scope            = subtree
-ldap_auth_bind        = yes
-ldap_auth_bind_userdn = uid=%{user},ou=People,dc=lksn2025,dc=id
+auth_bind        = yes
+auth_bind_userdn = uid=%{user},ou=People,dc=lksn2025,dc=id
 ldap_user_filter      = (&(objectClass=posixAccount)(uid=%{user}))
 ldap_user_attrs       = homeDirectory=home,uidNumber=uid,gidNumber=gid
