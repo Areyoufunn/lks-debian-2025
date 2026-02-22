@@ -1,0 +1,10 @@
+# Dovecot LDAP Authentication
+# Deployed by Ansible to /etc/dovecot/conf.d/auth-ldap.conf.ext
+
+passdb ldap {
+  !include /etc/dovecot/dovecot-ldap.conf
+}
+
+userdb ldap {
+  !include /etc/dovecot/dovecot-ldap.conf
+}

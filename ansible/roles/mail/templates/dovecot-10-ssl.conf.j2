@@ -1,0 +1,10 @@
+##
+## SSL settings (Dovecot 2.4.1)
+## Deployed by Ansible - overrides /etc/dovecot/conf.d/10-ssl.conf
+##
+
+ssl = yes
+
+# Certificate and key paths (Dovecot 2.4 renamed ssl_cert/ssl_key)
+ssl_server_cert_file = /etc/ssl/lksn-ca/certs/mail-srv.crt
+ssl_server_key_file  = /etc/ssl/lksn-ca/private/mail-srv.key

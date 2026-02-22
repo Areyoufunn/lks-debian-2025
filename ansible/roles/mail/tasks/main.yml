@@ -67,10 +67,28 @@
   notify: restart postfix
   tags: [postfix]
 
-- name: "⚙️ Configure Dovecot"
+- name: "⚙️ Configure Dovecot SSL (conf.d)"
   template:
-    src: dovecot.conf.j2
-    dest: /etc/dovecot/dovecot.conf
+    src: dovecot-10-ssl.conf.j2
+    dest: /etc/dovecot/conf.d/10-ssl.conf
+    mode: '0644'
+    backup: yes
+  notify: restart dovecot
+  tags: [dovecot]
+
+- name: "⚙️ Configure Dovecot Auth (conf.d)"
+  template:
+    src: dovecot-10-auth.conf.j2
+    dest: /etc/dovecot/conf.d/10-auth.conf
+    mode: '0644'
+    backup: yes
+  notify: restart dovecot
+  tags: [dovecot]
+
+- name: "⚙️ Configure Dovecot LDAP Auth Block (conf.d)"
+  template:
+    src: dovecot-auth-ldap.conf.ext.j2
+    dest: /etc/dovecot/conf.d/auth-ldap.conf.ext
     mode: '0644'
     backup: yes
   notify: restart dovecot

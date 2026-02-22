@@ -1,0 +1,11 @@
+##
+## Authentication settings (Dovecot 2.4.1)
+## Deployed by Ansible - overrides /etc/dovecot/conf.d/10-auth.conf
+##
+
+# Dovecot 2.4: disable_plaintext_auth replaced by auth_allow_cleartext
+auth_allow_cleartext = no
+auth_mechanisms = plain login
+
+# Include LDAP auth config
+!include auth-ldap.conf.ext
