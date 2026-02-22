@@ -26,13 +26,27 @@ auth_mechanisms = plain login
 auth_allow_cleartext = no
 
 # LDAP authentication
-# NOTE: Dovecot 2.4.x uses typed block syntax: passdb <type> { } instead of passdb { driver = <type> }
+# NOTE: Dovecot 2.4 - args is removed, LDAP config must be inline in the block
 passdb ldap {
-  args = /etc/dovecot/dovecot-ldap.conf
+  ldap_url = ldap://192.168.1.10
+  dn = cn=admin,dc=lksn2025,dc=id
+  dnpass = Skills39!
+  ldap_version = 3
+  base = ou=People,dc=lksn2025,dc=id
+  scope = subtree
+  pass_filter = (&(objectClass=posixAccount)(uid=%{user}))
+  pass_attrs = uid=user,userPassword=password
 }
 
 userdb ldap {
-  args = /etc/dovecot/dovecot-ldap.conf
+  ldap_url = ldap://192.168.1.10
+  dn = cn=admin,dc=lksn2025,dc=id
+  dnpass = Skills39!
+  ldap_version = 3
+  base = ou=People,dc=lksn2025,dc=id
+  scope = subtree
+  user_filter = (&(objectClass=posixAccount)(uid=%{user}))
+  user_attrs = homeDirectory=home,uidNumber=uid,gidNumber=gid
 }
 
 # Mail location
