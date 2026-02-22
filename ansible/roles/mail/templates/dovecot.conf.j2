@@ -22,7 +22,8 @@ ssl_server_key_file  = /etc/ssl/lksn-ca/private/mail-srv.key
 
 # Authentication
 auth_mechanisms = plain login
-disable_plaintext_auth = yes
+# NOTE: disable_plaintext_auth removed in Dovecot 2.4, replaced by auth_allow_cleartext
+auth_allow_cleartext = no
 
 # LDAP authentication
 # NOTE: Dovecot 2.4.x uses typed block syntax: passdb <type> { } instead of passdb { driver = <type> }
