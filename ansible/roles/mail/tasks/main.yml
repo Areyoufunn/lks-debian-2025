@@ -106,34 +106,74 @@
   notify: restart apache2
   tags: [apache]
 
-- name: "📥 Fetch Mail Certificate from CA Server"
+# ─────────────────────────────────────────────────────────────
+# SSL Certificate Distribution (from int-srv CA → mail-srv)
+# Fetches cert, key, and CA cert. Paths must match dovecot.conf.j2
+# and postfix-main.cf.j2 which use /etc/ssl/lksn-ca/
+# ─────────────────────────────────────────────────────────────
+
+- name: "📁 Create SSL Directory on mail-srv"
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+  loop:
+    - /etc/ssl/lksn-ca/certs
+    - /etc/ssl/lksn-ca/private
+  tags: [ssl]
+
+- name: "📥 Fetch Mail Certificate from CA Server (int-srv)"
   fetch:
-    src: /etc/ssl/lksn-ca/certs/mail-srv.crt
-    dest: /tmp/mail.crt
+    src: /root/ca/certs/mail.crt
+    dest: /tmp/ansible-mail.crt
     flat: yes
   delegate_to: "{{ groups['internal'][0] }}"
   tags: [ssl]
 
-- name: "📥 Fetch Mail Private Key from CA Server"
+- name: "📥 Fetch Mail Private Key from CA Server (int-srv)"
   fetch:
-    src: /etc/ssl/lksn-ca/private/mail-srv.key
-    dest: /tmp/mail.key
+    src: /root/ca/private/mail.key
+    dest: /tmp/ansible-mail.key
     flat: yes
   delegate_to: "{{ groups['internal'][0] }}"
   tags: [ssl]
 
-- name: "📤 Install Mail Certificate"
+- name: "📥 Fetch CA Certificate from CA Server (int-srv)"
+  fetch:
+    src: /root/ca/certs/ca.crt
+    dest: /tmp/ansible-ca.crt
+    flat: yes
+  delegate_to: "{{ groups['internal'][0] }}"
+  tags: [ssl]
+
+- name: "📤 Install Mail Certificate to mail-srv"
   copy:
-    src: /tmp/mail.crt
-    dest: /etc/ssl/certs/mail.crt
+    src: /tmp/ansible-mail.crt
+    dest: /etc/ssl/lksn-ca/certs/mail-srv.crt
+    owner: root
+    group: root
     mode: '0644'
   tags: [ssl]
 
-- name: "📤 Install Mail Private Key"
+- name: "📤 Install Mail Private Key to mail-srv"
   copy:
-    src: /tmp/mail.key
-    dest: /etc/ssl/private/mail.key
-    mode: '0600'
+    src: /tmp/ansible-mail.key
+    dest: /etc/ssl/lksn-ca/private/mail-srv.key
+    owner: root
+    group: dovecot
+    mode: '0640'
+  tags: [ssl]
+
+- name: "📤 Install CA Certificate to mail-srv"
+  copy:
+    src: /tmp/ansible-ca.crt
+    dest: /etc/ssl/lksn-ca/certs/ca.crt
+    owner: root
+    group: root
+    mode: '0644'
+  notify: restart dovecot
   tags: [ssl]
 
 - name: "⚙️ Configure Roundcube VirtualHost"
